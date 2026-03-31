@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoAdsWeather — Weather without the clutter</title>
+    <meta name="description" content="Fast, ad-free weather forecasts. No tracking, no cookies, no bloat.">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Home View -->
+    <div id="home-view" class="view">
+        <header class="home-header">
+            <h1>NoAdsWeather</h1>
+            <p class="tagline">Weather without the clutter.</p>
+        </header>
+        <main class="search-container">
+            <form id="search-form" role="search">
+                <input
+                    type="text"
+                    id="search-input"
+                    placeholder="Enter city or zip code"
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit">Search</button>
+            </form>
+            <p id="search-error" class="error" hidden></p>
+        </main>
+    </div>
+
+    <!-- Weather View (hidden initially) -->
+    <div id="weather-view" class="view" hidden>
+        <header class="weather-header">
+            <button id="back-btn" aria-label="Back to search">&larr; Back</button>
+            <h1 id="location-name"></h1>
+        </header>
+        <main id="weather-content">
+            <section id="alerts-section" hidden></section>
+            <section id="current-section"></section>
+            <section id="hourly-section"></section>
+            <section id="daily-section"></section>
+            <section id="radar-section"></section>
+            <section id="astronomy-section"></section>
+        </main>
+    </div>
+
+    <!-- Floating donate button -->
+    <a id="donate-btn" href="https://ko-fi.com/noadsweather" target="_blank" rel="noopener">
+        Support this site
+    </a>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
