@@ -1336,6 +1336,10 @@ document.getElementById('privacy-toggle').addEventListener('click', () => {
     panel.hidden = !panel.hidden;
 });
 
+document.getElementById('privacy-close').addEventListener('click', () => {
+    document.getElementById('privacy-panel').hidden = true;
+});
+
 // Close privacy panel when clicking outside
 document.addEventListener('click', (e) => {
     const panel = document.getElementById('privacy-panel');

@@ -219,6 +219,23 @@ body {
     color: var(--text);
 }
 
+#privacy-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 0.25rem;
+}
+
+#privacy-close:hover {
+    color: var(--text);
+}
+
 #privacy-panel p {
     margin-bottom: 0.75rem;
 }
