@@ -962,7 +962,7 @@ async function loadRadar(lat, lon) {
             let html = `<div style="position:absolute;left:${offsetX}%;top:${offsetY}%;width:${gridSize * 100}%;height:${gridSize * 100}%;display:grid;grid-template-columns:repeat(${gridSize},1fr);${extraStyle || ''}">`;
             for (let dy = -2; dy <= 2; dy++) {
                 for (let dx = -2; dx <= 2; dx++) {
-                    html += `<img src="${tileSrcFn(centerTileX + dx, centerTileY + dy)}" alt="" style="width:100%;height:100%;display:block;">`;
+                    html += `<img src="${tileSrcFn(centerTileX + dx, centerTileY + dy)}" alt="" style="width:100%;height:100%;display:block;" data-retries="0" onerror="if(this.dataset.retries<3){this.dataset.retries++;setTimeout(()=>{this.src=this.src+'&r='+this.dataset.retries},1000*this.dataset.retries)}else{this.style.visibility='hidden'}">`;
                 }
             }
             return html + '</div>';
