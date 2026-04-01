@@ -499,6 +499,10 @@ section h2 {
     min-height: 2rem;
 }
 
+.weather-col > section {
+    width: 100%;
+}
+
 .section-wide {
     margin-bottom: 1rem;
 }
