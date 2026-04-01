@@ -531,6 +531,7 @@ body.is-dragging .weather-col:empty {
 @media (max-width: 600px) {
     .columns-row {
         flex-direction: column;
+        align-items: stretch;
     }
     .section-controls {
         opacity: 1;
