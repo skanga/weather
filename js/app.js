@@ -420,67 +420,94 @@ function renderPollen(airQuality, lat, lon) {
         `;
         initDragScroll(section.querySelector('.pollen-scroll'));
     } else {
-        // Non-European — show button to fetch from Google proxy
-        section.innerHTML = `
-            <h2>Pollen</h2>
-            <div id="pollen-content">
-                <button id="pollen-btn" class="pollen-btn">See pollen data</button>
-            </div>
-        `;
-        document.getElementById('pollen-btn').addEventListener('click', () => {
-            loadPollenData(lat, lon);
-        });
+        // Non-European — check cache first, auto-show if available
+        const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
+        const cached = localStorage.getItem(cacheKey);
+
+        if (cached) {
+            // Auto-show cached data
+            section.innerHTML = `
+                <h2>Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span></h2>
+                <div id="pollen-content"></div>
+            `;
+            displayPollenData(JSON.parse(cached));
+        } else {
+            section.innerHTML = `
+                <h2>Pollen</h2>
+                <div id="pollen-content">
+                    <button id="pollen-btn" class="pollen-btn">See pollen data</button>
+                </div>
+            `;
+            document.getElementById('pollen-btn').addEventListener('click', () => {
+                loadPollenData(lat, lon);
+            });
+        }
     }
+}
+
+function displayPollenData(data) {
+    const content = document.getElementById('pollen-content');
+    const section = document.getElementById('details-section');
+
+    if (!data || data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
+        content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">Pollen data unavailable for this location</span>';
+        return;
+    }
+
+    const day = data.dailyInfo[0];
+    const types = day.pollenTypeInfo || [];
+    const plants = day.plantInfo || [];
+
+    let items = [];
+    for (const t of types) {
+        const idx = t.indexInfo;
+        if (!idx) continue;
+        items.push({ name: t.displayName, category: idx.category || 'None', value: idx.value });
+    }
+    for (const p of plants) {
+        const idx = p.indexInfo;
+        if (!idx || idx.value === 0) continue;
+        items.push({ name: p.displayName, category: idx.category, value: idx.value });
+    }
+
+    if (items.length === 0) {
+        content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">No significant pollen detected</span>';
+        return;
+    }
+
+    // Update header with date
+    const h2 = section.querySelector('h2');
+    if (h2) {
+        h2.innerHTML = `Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span>`;
+    }
+
+    content.innerHTML = `
+        <div class="pollen-scroll">
+            ${items.map(p => `
+                <div class="pollen-item">
+                    <div class="detail-label">${p.name}</div>
+                    <div class="detail-value" style="color:${pollenIndexColor(p.value)};">${p.category}</div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);">${p.value}/5</div>
+                </div>`).join('')}
+        </div>
+    `;
+    initDragScroll(content.querySelector('.pollen-scroll'));
 }
 
 async function loadPollenData(lat, lon) {
     const btn = document.getElementById('pollen-btn');
-    const content = document.getElementById('pollen-content');
     btn.textContent = 'Loading...';
     btn.disabled = true;
+
+    const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
 
     try {
         const res = await fetch(`${POLLEN_PROXY_URL}?lat=${lat}&lon=${lon}`);
         const data = await res.json();
-
-        if (data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
-            content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">Pollen data unavailable for this location</span>';
-            return;
-        }
-
-        const day = data.dailyInfo[0];
-        const types = day.pollenTypeInfo || [];
-        const plants = day.plantInfo || [];
-
-        let items = [];
-        for (const t of types) {
-            const idx = t.indexInfo;
-            if (!idx) continue;
-            items.push({ name: t.displayName, category: idx.category || 'None', value: idx.value });
-        }
-        for (const p of plants) {
-            const idx = p.indexInfo;
-            if (!idx || idx.value === 0) continue;
-            items.push({ name: p.displayName, category: idx.category, value: idx.value });
-        }
-
-        if (items.length === 0) {
-            content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">No significant pollen detected</span>';
-            return;
-        }
-
-        content.innerHTML = `
-            <div class="pollen-scroll">
-                ${items.map(p => `
-                    <div class="pollen-item">
-                        <div class="detail-label">${p.name}</div>
-                        <div class="detail-value" style="color:${pollenIndexColor(p.value)};">${p.category}</div>
-                        <div style="font-size:0.7rem;color:var(--text-muted);">${p.value}/5</div>
-                    </div>`).join('')}
-            </div>
-        `;
-        initDragScroll(content.querySelector('.pollen-scroll'));
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        displayPollenData(data);
     } catch (e) {
+        const content = document.getElementById('pollen-content');
         content.innerHTML = '<button id="pollen-btn" class="pollen-btn">Retry</button>';
         document.getElementById('pollen-btn').addEventListener('click', () => loadPollenData(lat, lon));
     }
