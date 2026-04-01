@@ -36,9 +36,14 @@
         <header class="weather-header">
             <button id="back-btn" aria-label="Back to search">&larr; Back</button>
             <h1 id="location-name"></h1>
+            <div class="weather-toggles">
+                <button id="units-toggle" class="units-toggle">°C</button>
+                <button id="time-toggle" class="units-toggle">24H</button>
+            </div>
         </header>
         <main id="weather-content">
             <section id="alerts-section" hidden></section>
+            <p id="weather-summary"></p>
             <div id="current-details-row">
                 <section id="current-section"></section>
                 <section id="details-section"></section>
@@ -71,10 +76,11 @@
             <li><strong>CartoDB</strong> — map tiles for radar display</li>
         </ul>
         <p>Your dark mode preference is saved in your browser's local storage (not a cookie) so it persists between visits. Pollen data is also cached locally to reduce unnecessary API calls. You can clear this anytime by clearing your browser data.</p>
-        <p>This site is open source and donation-supported. No data is sold, shared, or monetized in any way. If you think this is awesome, please consider <a href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener" style="color:var(--accent);">clicking here to support us</a>.</p>
+        <p>This site is open source and supported by tips from our visitors. No data is sold, shared, or monetized in any way. If you think this is awesome, please consider <a href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener" style="color:var(--accent);">clicking here to support us</a>.</p>
     </div>
 
-    <!-- Theme toggle -->
+    <!-- Theme toggle + restore defaults -->
+    <button id="restore-defaults" aria-label="Restore default layout" title="Restore default layout">↺</button>
     <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
 
     <!-- Floating donate button -->

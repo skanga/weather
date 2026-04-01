@@ -269,6 +269,13 @@ body {
     align-items: center;
     gap: 1rem;
     padding: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.weather-toggles {
+    margin-left: auto;
+    display: flex;
+    gap: 0.25rem;
 }
 
 #back-btn {
@@ -285,14 +292,162 @@ body {
     background: var(--btn-hover-bg);
 }
 
+/* Units toggle */
+.units-toggle {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    transition: background 0.2s;
+}
+
+
+.units-toggle:hover {
+    background: var(--btn-hover-bg);
+}
+
+/* Section controls (drag handle + minimize) */
+.section-controls {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.3rem;
+    z-index: 5;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+
+section:hover .section-controls,
+#current-details-row:hover > .section-controls,
+#sun-moon-row:hover > .section-controls {
+    opacity: 1;
+}
+
+.section-drag-handle {
+    cursor: grab;
+    font-size: 1rem;
+    color: var(--text-muted);
+    user-select: none;
+    touch-action: none;
+    padding: 0.1rem 0.3rem;
+}
+
+.section-drag-handle:active {
+    cursor: grabbing;
+}
+
+.section-min-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--text-muted);
+    padding: 0.1rem 0.3rem;
+    line-height: 1;
+}
+
+.section-min-btn:hover {
+    color: var(--text);
+}
+
+/* Minimized section */
+.section-minimized > *:not(.section-controls) {
+    display: none !important;
+}
+
+.section-minimized {
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    min-height: 0;
+}
+
+.section-minimized::after {
+    content: attr(data-section-name);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* Drag placeholder */
+.drag-placeholder {
+    background: var(--border-light);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.section-dragging {
+    opacity: 0.85;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    border-radius: 12px;
+}
+
+/* Hidden sections bar */
+#hidden-sections-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.show-section-btn {
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.show-section-btn:hover {
+    background: var(--btn-hover-bg);
+    color: var(--text);
+}
+
+/* Restore defaults button */
+#restore-defaults {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 4.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 1000;
+    transition: background 0.2s;
+}
+
+#restore-defaults:hover {
+    background: var(--btn-hover-bg);
+}
+
 /* Weather sections */
 section {
+    position: relative;
     background: var(--card-bg);
     border-radius: 12px;
     padding: 1.25rem;
     margin-bottom: 1rem;
     box-shadow: var(--card-shadow);
     transition: background 0.3s;
+}
+
+#current-details-row,
+#sun-moon-row {
+    position: relative;
 }
 
 section h2 {
@@ -309,6 +464,19 @@ section h2 {
     background: var(--alert-bg);
     border: 2px solid var(--alert-border);
     color: var(--alert-text);
+}
+
+/* Weather summary */
+#weather-summary {
+    font-size: 1rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    padding: 0 0.25rem;
+    line-height: 1.4;
+}
+
+#weather-summary:empty {
+    display: none;
 }
 
 /* Current + Details row */
@@ -559,6 +727,25 @@ section h2 {
     position: sticky;
     left: 0;
     width: fit-content;
+    align-items: center;
+}
+
+.chart-drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    user-select: none;
+    touch-action: none;
+    font-size: 0.85rem;
+}
+
+.chart-row:hover .chart-drag-handle {
+    opacity: 1;
+}
+
+.chart-drag-handle:active {
+    cursor: grabbing;
 }
 
 .chart-row-inner {

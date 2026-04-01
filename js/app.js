@@ -2,6 +2,426 @@
 // NoAdsWeather - app.js
 // =============================================================================
 
+// --- Units system ------------------------------------------------------------
+
+const IMPERIAL_COUNTRIES = ['United States', 'Liberia', 'Myanmar'];
+
+let units = {
+    temp: 'fahrenheit',
+    wind: 'mph',
+    precip: 'inch',
+    pressure: 'inHg',
+    time24h: false,
+};
+
+function isImperial() { return units.temp === 'fahrenheit'; }
+
+function saveUnitsPref() {
+    localStorage.setItem('unitsPref', JSON.stringify({ temp: units.temp, time24h: units.time24h }));
+}
+
+function loadUnitsPref() {
+    return JSON.parse(localStorage.getItem('unitsPref') || 'null');
+}
+
+function applyUnitsFromTemp(temp) {
+    const imperial = temp === 'fahrenheit';
+    units.temp = temp;
+    units.wind = imperial ? 'mph' : 'kmh';
+    units.precip = imperial ? 'inch' : 'mm';
+    units.pressure = imperial ? 'inHg' : 'hPa';
+}
+
+function setUnitsForCountry(country) {
+    const stored = loadUnitsPref();
+    if (stored) {
+        // User has a stored preference — use it
+        applyUnitsFromTemp(stored.temp);
+        units.time24h = stored.time24h;
+    } else {
+        // No stored preference — auto-detect from country
+        if (IMPERIAL_COUNTRIES.includes(country)) {
+            units = { temp: 'fahrenheit', wind: 'mph', precip: 'inch', pressure: 'inHg', time24h: false };
+        } else {
+            units = { temp: 'celsius', wind: 'kmh', precip: 'mm', pressure: 'hPa', time24h: true };
+        }
+    }
+    updateUnitsToggleLabel();
+}
+
+function toggleUnits() {
+    applyUnitsFromTemp(isImperial() ? 'celsius' : 'fahrenheit');
+    updateUnitsToggleLabel();
+    saveUnitsPref();
+}
+
+function updateUnitsToggleLabel() {
+    const btn = document.getElementById('units-toggle');
+    if (btn) btn.textContent = isImperial() ? '°C' : '°F';
+    const timeBtn = document.getElementById('time-toggle');
+    if (timeBtn) timeBtn.textContent = units.time24h ? '12H' : '24H';
+}
+
+function tempUnit() { return isImperial() ? '°F' : '°C'; }
+function windUnit() { return isImperial() ? 'mph' : 'km/h'; }
+function precipUnit() { return isImperial() ? '"' : 'mm'; }
+
+function fmtTimeUnit(date) {
+    if (!date || isNaN(date)) return '—';
+    if (units.time24h) {
+        return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function fmtPrecip(val) {
+    if (isImperial()) return val.toFixed(2) + '"';
+    return val.toFixed(1) + 'mm';
+}
+
+// --- Section Preferences System -----------------------------------------------
+
+const DEFAULT_SECTION_ORDER = [
+    'current-details-row', 'hourly-section', 'daily-section',
+    'radar-section', 'sun-moon-row'
+];
+
+const DEFAULT_CHART_ORDER = ['chart-temp', 'chart-atmos', 'chart-precip', 'chart-wind'];
+
+const SECTION_NAMES = {
+    'current-details-row': 'Current & Pollen',
+    'hourly-section': 'Hourly Forecast',
+    'daily-section': '10-Day Forecast',
+    'radar-section': 'Radar',
+    'sun-moon-row': 'Sun & Moon',
+};
+
+function loadSectionPrefs() {
+    const stored = JSON.parse(localStorage.getItem('sectionPrefs') || 'null');
+    return stored || {
+        order: [...DEFAULT_SECTION_ORDER],
+        hidden: [],
+        minimized: [],
+        chartOrder: [...DEFAULT_CHART_ORDER],
+    };
+}
+
+function saveSectionPrefs(prefs) {
+    localStorage.setItem('sectionPrefs', JSON.stringify(prefs));
+}
+
+function applySectionPreferences() {
+    const prefs = loadSectionPrefs();
+    const container = document.getElementById('weather-content');
+    if (!container) return;
+
+    // Reset all sections first (clear inline hiding/minimized from previous state)
+    for (const id of DEFAULT_SECTION_ORDER) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = '';
+            el.classList.remove('section-minimized');
+        }
+    }
+
+    // Reorder: alerts + summary stay first, then ordered sections
+    for (const id of prefs.order) {
+        const el = document.getElementById(id);
+        if (el) container.appendChild(el);
+    }
+    // Privacy toggle and spacer stay at end
+    const spacer = container.querySelector('.bottom-spacer');
+    if (spacer) container.appendChild(spacer);
+
+    // Apply hidden
+    for (const id of prefs.hidden) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    }
+
+    // Apply minimized
+    for (const id of prefs.minimized) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('section-minimized');
+    }
+
+    // Reorder chart rows within the daily forecast
+    applyChartOrder(prefs.chartOrder || DEFAULT_CHART_ORDER);
+
+    // Inject controls on each draggable section
+    injectSectionControls();
+    renderHiddenSectionsBar();
+}
+
+function injectSectionControls() {
+    const prefs = loadSectionPrefs();
+    for (const id of prefs.order) {
+        const el = document.getElementById(id);
+        if (!el || el.style.display === 'none') continue;
+        el.setAttribute('data-section-name', SECTION_NAMES[id] || id);
+        // Remove old controls (innerHTML wipes them, but just in case)
+        const old = el.querySelector('.section-controls');
+        if (old) old.remove();
+
+        const controls = document.createElement('div');
+        controls.className = 'section-controls';
+
+        const isMin = el.classList.contains('section-minimized');
+        controls.innerHTML = `
+            <span class="section-drag-handle" title="Drag to reorder">⠿</span>
+            <button class="section-min-btn" title="${isMin ? 'Remove section' : 'Minimize section'}">${isMin ? '✕' : '−'}</button>
+        `;
+        el.prepend(controls);
+
+        controls.querySelector('.section-min-btn').addEventListener('click', () => {
+            const p = loadSectionPrefs();
+            if (el.classList.contains('section-minimized')) {
+                // Already minimized — now hide permanently
+                el.style.display = 'none';
+                p.minimized = p.minimized.filter(x => x !== id);
+                if (!p.hidden.includes(id)) p.hidden.push(id);
+                saveSectionPrefs(p);
+                renderHiddenSectionsBar();
+            } else {
+                // Minimize
+                el.classList.add('section-minimized');
+                if (!p.minimized.includes(id)) p.minimized.push(id);
+                saveSectionPrefs(p);
+                // Update button
+                controls.querySelector('.section-min-btn').textContent = '✕';
+                controls.querySelector('.section-min-btn').title = 'Remove section';
+            }
+        });
+
+        // Click on minimized section header to expand
+        el.addEventListener('click', (e) => {
+            if (!el.classList.contains('section-minimized')) return;
+            if (e.target.closest('.section-controls')) return;
+            const p = loadSectionPrefs();
+            el.classList.remove('section-minimized');
+            p.minimized = p.minimized.filter(x => x !== id);
+            saveSectionPrefs(p);
+            controls.querySelector('.section-min-btn').textContent = '−';
+            controls.querySelector('.section-min-btn').title = 'Minimize section';
+        });
+    }
+}
+
+function renderHiddenSectionsBar() {
+    let bar = document.getElementById('hidden-sections-bar');
+    const prefs = loadSectionPrefs();
+
+    if (prefs.hidden.length === 0) {
+        if (bar) bar.remove();
+        return;
+    }
+
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'hidden-sections-bar';
+        const summary = document.getElementById('weather-summary');
+        if (summary) summary.parentNode.insertBefore(bar, summary.nextSibling);
+    }
+
+    bar.innerHTML = prefs.hidden.map(id =>
+        `<button class="show-section-btn" data-id="${id}">Show ${SECTION_NAMES[id] || id}</button>`
+    ).join(' ');
+
+    bar.querySelectorAll('.show-section-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const p = loadSectionPrefs();
+            p.hidden = p.hidden.filter(h => h !== id);
+            saveSectionPrefs(p);
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = '';
+                el.classList.remove('section-minimized');
+            }
+            applySectionPreferences();
+        });
+    });
+}
+
+// --- Drag-to-Reorder ---------------------------------------------------------
+
+function initSectionDrag() {
+    const container = document.getElementById('weather-content');
+    if (!container) return;
+
+    let dragEl = null;
+    let placeholder = null;
+    let offsetY = 0;
+    let dragActive = false;
+
+    container.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.section-drag-handle');
+        if (!handle) return;
+
+        dragEl = handle.closest('section, #current-details-row, #sun-moon-row');
+        if (!dragEl || !DEFAULT_SECTION_ORDER.includes(dragEl.id)) return;
+
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+
+        const rect = dragEl.getBoundingClientRect();
+        offsetY = e.clientY - rect.top;
+
+        placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.style.height = rect.height + 'px';
+        dragEl.parentNode.insertBefore(placeholder, dragEl);
+
+        dragEl.classList.add('section-dragging');
+        dragEl.style.position = 'fixed';
+        dragEl.style.top = (e.clientY - offsetY) + 'px';
+        dragEl.style.left = rect.left + 'px';
+        dragEl.style.width = rect.width + 'px';
+        dragEl.style.zIndex = '999';
+        dragActive = true;
+    });
+
+    container.addEventListener('pointermove', (e) => {
+        if (!dragActive || !dragEl) return;
+        e.preventDefault();
+
+        dragEl.style.top = (e.clientY - offsetY) + 'px';
+
+        // Find where to insert placeholder
+        const children = [...container.children].filter(c =>
+            DEFAULT_SECTION_ORDER.includes(c.id) && c !== dragEl
+        );
+
+        for (const child of children) {
+            const rect = child.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            if (e.clientY < midY) {
+                container.insertBefore(placeholder, child);
+                return;
+            }
+        }
+        // If past all, put at end (before spacer)
+        const spacer = container.querySelector('.bottom-spacer');
+        if (spacer) container.insertBefore(placeholder, spacer);
+    });
+
+    const endDrag = () => {
+        if (!dragActive || !dragEl) return;
+
+        placeholder.parentNode.insertBefore(dragEl, placeholder);
+        placeholder.remove();
+
+        dragEl.classList.remove('section-dragging');
+        dragEl.style.position = '';
+        dragEl.style.top = '';
+        dragEl.style.left = '';
+        dragEl.style.width = '';
+        dragEl.style.zIndex = '';
+
+        // Save new order
+        const newOrder = [...container.children]
+            .filter(el => DEFAULT_SECTION_ORDER.includes(el.id))
+            .map(el => el.id);
+        const prefs = loadSectionPrefs();
+        prefs.order = newOrder;
+        saveSectionPrefs(prefs);
+
+        dragEl = null;
+        placeholder = null;
+        dragActive = false;
+    };
+
+    container.addEventListener('pointerup', endDrag);
+    container.addEventListener('pointercancel', endDrag);
+}
+
+function applyChartOrder(chartOrder) {
+    // Run after a short delay to let requestAnimationFrame draw the charts first
+    requestAnimationFrame(() => {
+        const scroll = document.querySelector('.forecast-scroll');
+        if (!scroll) return;
+        const footer = scroll.querySelector('.forecast-footer');
+        for (const chartId of chartOrder) {
+            const row = scroll.querySelector(`[data-chart-id="${chartId}"]`);
+            if (row && footer) {
+                scroll.insertBefore(row, footer);
+            }
+        }
+    });
+}
+
+function initChartDrag() {
+    // Delegate on #daily-section for chart row reordering
+    document.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.chart-drag-handle');
+        if (!handle) return;
+        const chartRow = handle.closest('.chart-row');
+        const scroll = chartRow ? chartRow.closest('.forecast-scroll') : null;
+        if (!chartRow || !scroll) return;
+
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+
+        const rect = chartRow.getBoundingClientRect();
+        const scrollRect = scroll.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.style.height = rect.height + 'px';
+        scroll.insertBefore(placeholder, chartRow);
+
+        chartRow.classList.add('section-dragging');
+        chartRow.style.position = 'fixed';
+        chartRow.style.top = (e.clientY - offsetY) + 'px';
+        chartRow.style.left = scrollRect.left + 'px';
+        chartRow.style.width = scrollRect.width + 'px';
+        chartRow.style.zIndex = '999';
+
+        const onMove = (e2) => {
+            e2.preventDefault();
+            chartRow.style.top = (e2.clientY - offsetY) + 'px';
+
+            const rows = [...scroll.querySelectorAll('.chart-row:not(.section-dragging)')];
+            for (const row of rows) {
+                const r = row.getBoundingClientRect();
+                if (e2.clientY < r.top + r.height / 2) {
+                    scroll.insertBefore(placeholder, row);
+                    return;
+                }
+            }
+            const footer = scroll.querySelector('.forecast-footer');
+            if (footer) scroll.insertBefore(placeholder, footer);
+        };
+
+        const onUp = () => {
+            scroll.insertBefore(chartRow, placeholder);
+            placeholder.remove();
+
+            chartRow.classList.remove('section-dragging');
+            chartRow.style.position = '';
+            chartRow.style.top = '';
+            chartRow.style.left = '';
+            chartRow.style.width = '';
+            chartRow.style.zIndex = '';
+
+            // Save new chart order
+            const newOrder = [...scroll.querySelectorAll('.chart-row')]
+                .map(r => r.dataset.chartId)
+                .filter(Boolean);
+            const prefs = loadSectionPrefs();
+            prefs.chartOrder = newOrder;
+            saveSectionPrefs(prefs);
+
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+        };
+
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+    });
+}
+
 // --- Constants ---------------------------------------------------------------
 
 const WEATHER_DESCRIPTIONS = {
@@ -268,10 +688,10 @@ async function fetchOpenMeteo(lat, lon) {
         current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index',
         hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,cloud_cover,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure',
         daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset',
-        temperature_unit: 'fahrenheit',
-        wind_speed_unit: 'mph',
-        precipitation_unit: 'inch',
-        pressure_unit: 'inHg',
+        temperature_unit: units.temp,
+        wind_speed_unit: units.wind,
+        precipitation_unit: units.precip,
+        pressure_unit: units.pressure,
         timezone: 'auto',
         forecast_days: 10,
     });
@@ -353,6 +773,116 @@ async function fetchAlerts(lat, lon) {
 
 // --- Render Functions --------------------------------------------------------
 
+function generateSummary(current, hourly, daily) {
+    const now = new Date();
+    const currentTemp = Math.round(current.temperature_2m);
+    const feelsLike = Math.round(current.apparent_temperature);
+    const info = weatherInfo(current.weather_code);
+
+    // Find next rain in the next 24 hours
+    const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+    let rainStartHour = null;
+    let rainEndHour = null;
+    let currentlyRaining = current.weather_code >= 51 && current.weather_code <= 99;
+
+    if (startIdx !== -1) {
+        for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
+            const prob = hourly.precipitation_probability[i];
+            if (!rainStartHour && prob >= 40) {
+                rainStartHour = new Date(hourly.time[i]);
+            }
+            if (rainStartHour && !rainEndHour && prob < 30) {
+                rainEndHour = new Date(hourly.time[i]);
+            }
+        }
+    }
+
+    // Today's high and precip
+    const todayHigh = Math.round(daily.temperature_2m_max[0]);
+    const todayLow = Math.round(daily.temperature_2m_min[0]);
+    const todayPrecip = daily.precipitation_sum[0];
+
+    // Tomorrow's conditions
+    const tomorrowInfo = daily.time.length > 1 ? weatherInfo(daily.weather_code[1]) : null;
+    const tomorrowHigh = daily.time.length > 1 ? Math.round(daily.temperature_2m_max[1]) : null;
+    const tomorrowPrecip = daily.time.length > 1 ? daily.precipitation_sum[1] : 0;
+    const tomorrowCode = daily.time.length > 1 ? daily.weather_code[1] : 0;
+
+    // Build opening sentence (temp + condition combined)
+    // Thresholds adapt to F or C
+    const freezing = isImperial() ? 32 : 0;
+    const cold = isImperial() ? 50 : 10;
+    const cool = isImperial() ? 65 : 18;
+    const warm = isImperial() ? 80 : 27;
+    const hot = isImperial() ? 95 : 35;
+
+    let opening;
+    if (currentTemp <= freezing) opening = `It's freezing at ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= cold) opening = `It's cold at ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= cool) opening = `It's cool at ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= warm) opening = `It's ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= hot) opening = `It's warm at ${currentTemp}${tempUnit()}`;
+    else opening = `It's hot at ${currentTemp}${tempUnit()}`;
+
+    if (Math.abs(feelsLike - currentTemp) >= 5) {
+        opening += ` (feels like ${feelsLike}${tempUnit()})`;
+    }
+
+    // Add condition to the opening sentence
+    const isSnow = (code) => code >= 71 && code <= 77 || code === 85 || code === 86;
+    if (currentlyRaining) {
+        const code = current.weather_code;
+        if (code >= 95) opening += ' with thunderstorms';
+        else if (isSnow(code)) opening += ' and snowing';
+        else opening += ' and raining';
+        if (todayPrecip > 0) opening += ` (${fmtPrecip(todayPrecip)} expected today)`;
+        if (rainEndHour) opening += `, clearing around ${fmtHour(rainEndHour)}`;
+    } else if (rainStartHour) {
+        const hoursUntil = (rainStartHour - now) / (1000 * 60 * 60);
+        if (hoursUntil <= 1) opening += ' with rain expected very soon';
+        else opening += ` with rain likely around ${fmtHour(rainStartHour)}`;
+    } else {
+        if (info.text.toLowerCase().includes('clear') || info.text.toLowerCase().includes('sunny')) {
+            opening += ' with clear skies';
+        } else if (info.text.toLowerCase().includes('cloud') || info.text.toLowerCase().includes('overcast')) {
+            opening += ' and cloudy';
+        }
+    }
+
+    // Follow-up sentences
+    let follow = [];
+    follow.push(`High of ${todayHigh}${tempUnit()} today`);
+
+    if (tomorrowInfo && tomorrowHigh !== null) {
+        const tomorrowRain = tomorrowCode >= 51 && tomorrowCode <= 99;
+        const tomorrowSnow = isSnow(tomorrowCode);
+        if (tomorrowSnow && tomorrowPrecip > 0) {
+            follow.push(`Snow expected tomorrow (${fmtPrecip(tomorrowPrecip)})`);
+        } else if (tomorrowRain && tomorrowPrecip > 0) {
+            follow.push(`Rain expected tomorrow (${fmtPrecip(tomorrowPrecip)})`);
+        } else if (tomorrowRain) {
+            follow.push(`Rain expected tomorrow`);
+        } else if (tomorrowHigh - todayHigh >= 8) {
+            follow.push(`warming up to ${tomorrowHigh}${tempUnit()} tomorrow`);
+        } else if (todayHigh - tomorrowHigh >= 8) {
+            follow.push(`cooling to ${tomorrowHigh}${tempUnit()} tomorrow`);
+        }
+    }
+
+    return opening + '. ' + follow.join('. ') + '.';
+}
+
+function fmtHour(date) {
+    if (units.time24h) {
+        return date.getHours().toString().padStart(2, '0') + ':00';
+    }
+    const h = date.getHours();
+    if (h === 0) return '12am';
+    if (h < 12) return h + 'am';
+    if (h === 12) return '12pm';
+    return (h - 12) + 'pm';
+}
+
 function renderCurrent(current, airQuality) {
     const info = weatherInfo(current.weather_code);
     const section = document.getElementById('current-section');
@@ -368,8 +898,8 @@ function renderCurrent(current, airQuality) {
                 <div class="condition">${info.text}</div>
             </div>
             <div class="current-temp-block">
-                <div class="temp">${Math.round(current.temperature_2m)}°F</div>
-                <div class="feels-like">Feels like ${Math.round(current.apparent_temperature)}°F</div>
+                <div class="temp">${Math.round(current.temperature_2m)}${tempUnit()}</div>
+                <div class="feels-like">Feels like ${Math.round(current.apparent_temperature)}${tempUnit()}</div>
             </div>
         </div>
         <div class="current-details-grid">
@@ -379,15 +909,15 @@ function renderCurrent(current, airQuality) {
             </div>
             <div class="detail-item">
                 <span class="detail-label">Dew Point</span>
-                <span class="detail-value">${Math.round(current.dew_point_2m)}°F</span>
+                <span class="detail-value">${Math.round(current.dew_point_2m)}${tempUnit()}</span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">Wind</span>
-                <span class="detail-value">${Math.round(current.wind_speed_10m)} mph ${windDirection(current.wind_direction_10m)}</span>
+                <span class="detail-value">${Math.round(current.wind_speed_10m)} ${windUnit()} ${windDirection(current.wind_direction_10m)}</span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">Gusts</span>
-                <span class="detail-value">${Math.round(current.wind_gusts_10m)} mph</span>
+                <span class="detail-value">${Math.round(current.wind_gusts_10m)} ${windUnit()}</span>
             </div>
             ${aqiInfo ? `
             <div class="detail-item">
@@ -535,7 +1065,9 @@ function renderHourly(hourly) {
     for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
         const time = new Date(hourly.time[i]);
         const hour = time.getHours();
-        const label = hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`;
+        const label = units.time24h
+            ? hour.toString().padStart(2, '0') + ':00'
+            : (hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`);
         const info = weatherInfo(hourly.weather_code[i]);
         html += `
             <div class="hourly-item">
@@ -592,7 +1124,7 @@ function renderDaily(daily, hourly) {
                 </div>
                 <div class="forecast-icon">${info.icon}</div>
                 <div class="forecast-condition">${info.text}</div>
-                <div class="forecast-precip">${precip > 0 ? '💧 ' + precip.toFixed(2) + ' in' : ''}</div>
+                <div class="forecast-precip">${precip > 0 ? '💧 ' + fmtPrecip(precip) : ''}</div>
             </div>
         `;
     }
@@ -600,8 +1132,8 @@ function renderDaily(daily, hourly) {
     // Build chart rows — each has: sticky left labels | canvas | sticky right labels
     function chartRow(id, height, legendHtml, leftLabels, rightLabels) {
         return `
-            <div class="chart-row">
-                <div class="chart-legend">${legendHtml}</div>
+            <div class="chart-row" data-chart-id="${id}">
+                <div class="chart-legend"><span class="chart-drag-handle" title="Drag to reorder">⠿</span>${legendHtml}</div>
                 <div class="chart-row-inner">
                     <div class="chart-axis chart-axis-left">${leftLabels}</div>
                     <canvas id="${id}" width="${innerW}" height="${height}" style="display:block;width:${innerW}px;height:${height}px;"></canvas>
@@ -623,10 +1155,10 @@ function renderDaily(daily, hourly) {
 
     const r = chartRanges;
 
-    const tempLegend = '<span><span style="color:#dc2626;">■</span> Temperature (°F)</span><span><span style="color:#9333ea;">■</span> Feels Like (°F)</span><span><span style="color:#16a34a;">■</span> Dew Point (°F)</span>';
+    const tempLegend = `<span><span style="color:#dc2626;">■</span> Temperature (${tempUnit()})</span><span><span style="color:#9333ea;">■</span> Feels Like (${tempUnit()})</span><span><span style="color:#16a34a;">■</span> Dew Point (${tempUnit()})</span>`;
     const atmosLegend = '<span><span style="color:#9ca3af;">■</span> Cloud Cover (%)</span><span><span style="color:#3b82f6;">■</span> Precip Chance (%)</span><span><span style="color:#84cc16;">■</span> Humidity (%)</span><span><span style="color:#1a1a1a;">■</span> Pressure (inHg)</span>';
-    const precipLegend = '<span><span style="color:#3b82f6;">■</span> Precip Accum. (in)</span><span><span style="color:#16a34a;">■</span> Hourly Precip (in)</span>';
-    const windLegend = '<span><span style="color:#2563eb;">■</span> Wind Speed (mph)</span>';
+    const precipLegend = `<span><span style="color:#3b82f6;">■</span> Precip Accum. (${isImperial() ? 'in' : 'mm'})</span><span><span style="color:#16a34a;">■</span> Hourly Precip (${isImperial() ? 'in' : 'mm'})</span>`;
+    const windLegend = `<span><span style="color:#2563eb;">■</span> Wind Speed (${windUnit()})</span>`;
 
     // Axis width must match CSS .chart-axis width
     const AXIS_W = 40;
@@ -648,8 +1180,8 @@ function renderDaily(daily, hourly) {
                     makeLabels(0, 100, 4, '%', '#84cc16'),
                     makeLabels(0, 100, 4, '%', '#84cc16'))}
                 ${chartRow('chart-precip', 100, precipLegend,
-                    makeLabels(0, r.precip.maxAccum, 3, '"', '#3b82f6'),
-                    makeLabels(0, r.precip.maxAccum, 3, '"', '#3b82f6'))}
+                    makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6'),
+                    makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6'))}
                 ${chartRow('chart-wind', 100, windLegend,
                     makeLabels(0, r.wind.max, 3, '', '#2563eb'),
                     makeLabels(0, r.wind.max, 3, '', '#2563eb'))}
@@ -1025,10 +1557,7 @@ async function loadRadar(lat, lon) {
 }
 
 function renderSunMoon(daily, lat, lon) {
-    const fmtTime = (d) => {
-        if (!d || isNaN(d)) return '—';
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    };
+    const fmtTime = fmtTimeUnit;
 
     const fmtDate = (d) => {
         if (!d || isNaN(d)) return '';
@@ -1199,6 +1728,7 @@ async function fetchAllWeatherData(lat, lon) {
     _lastLat = lat;
     _lastLon = lon;
     document.getElementById('alerts-section').hidden = true;
+    document.getElementById('weather-summary').textContent = '';
     document.getElementById('current-section').innerHTML = '<div class="loading">Loading...</div>';
     document.getElementById('details-section').innerHTML = '';
     document.getElementById('hourly-section').innerHTML = '';
@@ -1214,6 +1744,8 @@ async function fetchAllWeatherData(lat, lon) {
             fetchAirQuality(lat, lon),
         ]);
 
+        document.getElementById('weather-summary').textContent =
+            generateSummary(meteo.current, meteo.hourly, meteo.daily);
         renderCurrent(meteo.current, airQuality);
         renderPollen(airQuality, lat, lon);
         renderHourly(meteo.hourly);
@@ -1221,6 +1753,7 @@ async function fetchAllWeatherData(lat, lon) {
         renderAlerts(alerts);
         renderRadar(lat, lon);
         renderSunMoon(meteo.daily, lat, lon);
+        applySectionPreferences();
     } catch (err) {
         document.getElementById('current-section').innerHTML =
             `<p class="error">Failed to load weather data. Please try again.</p>`;
@@ -1258,6 +1791,7 @@ searchForm.addEventListener('submit', async (e) => {
 
     try {
         const location = await geocode(query);
+        setUnitsForCountry(location.country);
         updateURL(query);
         showWeather(location, query);
         fetchAllWeatherData(location.lat, location.lon);
@@ -1273,6 +1807,22 @@ searchForm.addEventListener('submit', async (e) => {
 backBtn.addEventListener('click', () => {
     showHome();
     history.pushState(null, '', location.pathname);
+});
+
+document.getElementById('units-toggle').addEventListener('click', () => {
+    toggleUnits();
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
+});
+
+document.getElementById('time-toggle').addEventListener('click', () => {
+    units.time24h = !units.time24h;
+    updateUnitsToggleLabel();
+    saveUnitsPref();
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
 });
 
 // --- URL State ---------------------------------------------------------------
@@ -1308,6 +1858,10 @@ window.addEventListener('popstate', () => {
     }
 })();
 
+// Init drag-to-reorder (event delegation, works across re-renders)
+initSectionDrag();
+initChartDrag();
+
 // --- Dark Mode ---------------------------------------------------------------
 
 (function () {
@@ -1334,6 +1888,15 @@ window.addEventListener('popstate', () => {
         setTheme(current === 'dark' ? 'light' : 'dark');
     });
 })();
+
+// --- Restore Defaults --------------------------------------------------------
+
+document.getElementById('restore-defaults').addEventListener('click', () => {
+    localStorage.removeItem('sectionPrefs');
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
+});
 
 // --- Privacy Panel -----------------------------------------------------------
 
