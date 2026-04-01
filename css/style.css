@@ -231,7 +231,7 @@ section h2 {
 #current-details-row {
     display: flex;
     gap: 1rem;
-    align-items: stretch;
+    align-items: flex-start;
 }
 
 #current-details-row #current-section {
@@ -240,6 +240,8 @@ section h2 {
 
 #current-details-row #details-section {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .current-main {
@@ -274,13 +276,13 @@ section h2 {
     margin-top: 0.15rem;
 }
 
-.current-sub {
-    display: flex;
-    gap: 1.25rem;
-    font-size: 0.85rem;
-    color: var(--text-muted);
+/* Current conditions detail grid (2 columns) */
+.current-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 1.5rem;
     margin-top: 0.75rem;
-    flex-wrap: wrap;
+    font-size: 0.85rem;
 }
 
 /* Pollen button */
@@ -308,10 +310,20 @@ section h2 {
     cursor: default;
 }
 
-/* Details grid */
-.details-grid {
-    display: flex;
-    gap: 1.5rem;
+/* Pollen scroll */
+.pollen-scroll {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: 1fr 1fr;
+    gap: 0.5rem 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    cursor: grab;
+}
+
+.pollen-item {
+    text-align: center;
+    min-width: 70px;
 }
 
 .current-detail-col {

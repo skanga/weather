@@ -350,9 +350,13 @@ async function fetchAlerts(lat, lon) {
 
 // --- Render Functions --------------------------------------------------------
 
-function renderCurrent(current) {
+function renderCurrent(current, airQuality) {
     const info = weatherInfo(current.weather_code);
     const section = document.getElementById('current-section');
+    const uvVal = Math.round(current.uv_index);
+    const aqi = airQuality ? airQuality.us_aqi : null;
+    const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
+
     section.innerHTML = `
         <h2>Current Conditions</h2>
         <div class="current-main">
@@ -365,57 +369,64 @@ function renderCurrent(current) {
                 <div class="feels-like">Feels like ${Math.round(current.apparent_temperature)}°F</div>
             </div>
         </div>
-        <div class="current-sub">
-            <span>Humidity: ${current.relative_humidity_2m}%</span>
-            <span>Dew Point: ${Math.round(current.dew_point_2m)}°F</span>
-            <span>Wind: ${Math.round(current.wind_speed_10m)} mph ${windDirection(current.wind_direction_10m)}</span>
+        <div class="current-details-grid">
+            <div class="detail-item">
+                <span class="detail-label">Humidity</span>
+                <span class="detail-value">${current.relative_humidity_2m}%</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Dew Point</span>
+                <span class="detail-value">${Math.round(current.dew_point_2m)}°F</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Wind</span>
+                <span class="detail-value">${Math.round(current.wind_speed_10m)} mph ${windDirection(current.wind_direction_10m)}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Gusts</span>
+                <span class="detail-value">${Math.round(current.wind_gusts_10m)} mph</span>
+            </div>
+            ${aqiInfo ? `
+            <div class="detail-item">
+                <span class="detail-label">Air Quality</span>
+                <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
+            </div>` : ''}
+            <div class="detail-item">
+                <span class="detail-label">UV Index</span>
+                <span class="detail-value">${uvVal} ${uvVal <= 2 ? '(Low)' : uvVal <= 5 ? '(Moderate)' : uvVal <= 7 ? '(High)' : uvVal <= 10 ? '(Very High)' : '(Extreme)'}</span>
+            </div>
         </div>
     `;
 }
 
 const POLLEN_PROXY_URL = 'https://pollen-proxy-15838356607.us-central1.run.app';
 
-function renderDetails(current, airQuality, lat, lon) {
+function renderPollen(airQuality, lat, lon) {
     const section = document.getElementById('details-section');
-    const uvVal = Math.round(current.uv_index);
-    const aqi = airQuality ? airQuality.us_aqi : null;
-    const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
     const openMeteoPollen = pollenSummary(airQuality);
     const hasFreePollen = openMeteoPollen && openMeteoPollen.length > 0;
 
-    // Build pollen column HTML if Open-Meteo has data (Europe)
-    let pollenColHtml = '';
     if (hasFreePollen) {
-        pollenColHtml = openMeteoPollen.map(p => `
-            <div class="detail-item">
-                <span class="detail-label">${p.name} Pollen</span>
-                <span class="detail-value" style="color:${p.color};">${p.level}</span>
-            </div>`).join('');
-    }
-
-    section.innerHTML = `
-        <h2>Details ${!hasFreePollen ? '<button id="pollen-btn" class="pollen-btn">See pollen data</button>' : ''}</h2>
-        <div class="details-grid">
-            <div class="current-detail-col">
-                <div class="detail-item">
-                    <span class="detail-label">UV Index</span>
-                    <span class="detail-value">${uvVal} ${uvVal <= 2 ? '(Low)' : uvVal <= 5 ? '(Moderate)' : uvVal <= 7 ? '(High)' : uvVal <= 10 ? '(Very High)' : '(Extreme)'}</span>
-                </div>
-                ${aqiInfo ? `
-                <div class="detail-item">
-                    <span class="detail-label">Air Quality</span>
-                    <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
-                </div>` : ''}
-                <div class="detail-item">
-                    <span class="detail-label">Wind Gusts</span>
-                    <span class="detail-value">${Math.round(current.wind_gusts_10m)} mph</span>
-                </div>
+        // European locations — show Open-Meteo pollen directly
+        section.innerHTML = `
+            <h2>Pollen</h2>
+            <div class="pollen-scroll">
+                ${openMeteoPollen.map(p => `
+                    <div class="pollen-item">
+                        <div class="detail-label">${p.name}</div>
+                        <div class="detail-value" style="color:${p.color};">${p.level}</div>
+                    </div>`).join('')}
             </div>
-            <div id="pollen-col" class="current-detail-col" style="${hasFreePollen ? '' : 'display:none;'}">${pollenColHtml}</div>
-        </div>
-    `;
-
-    if (!hasFreePollen) {
+        `;
+        initDragScroll(section.querySelector('.pollen-scroll'));
+    } else {
+        // Non-European — show button to fetch from Google proxy
+        section.innerHTML = `
+            <h2>Pollen</h2>
+            <div id="pollen-content">
+                <button id="pollen-btn" class="pollen-btn">See pollen data</button>
+            </div>
+        `;
         document.getElementById('pollen-btn').addEventListener('click', () => {
             loadPollenData(lat, lon);
         });
@@ -424,7 +435,7 @@ function renderDetails(current, airQuality, lat, lon) {
 
 async function loadPollenData(lat, lon) {
     const btn = document.getElementById('pollen-btn');
-    const col = document.getElementById('pollen-col');
+    const content = document.getElementById('pollen-content');
     btn.textContent = 'Loading...';
     btn.disabled = true;
 
@@ -433,52 +444,45 @@ async function loadPollenData(lat, lon) {
         const data = await res.json();
 
         if (data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
-            col.style.display = 'flex';
-            col.innerHTML = '<div class="detail-item"><span class="detail-value" style="color:var(--text-muted);">Pollen data unavailable for this location</span></div>';
-            btn.style.display = 'none';
+            content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">Pollen data unavailable for this location</span>';
             return;
         }
 
         const day = data.dailyInfo[0];
         const types = day.pollenTypeInfo || [];
+        const plants = day.plantInfo || [];
 
-        let html = '';
+        let items = [];
         for (const t of types) {
             const idx = t.indexInfo;
             if (!idx) continue;
-            const color = pollenIndexColor(idx.value);
-            html += `
-                <div class="detail-item">
-                    <span class="detail-label">${t.displayName}</span>
-                    <span class="detail-value" style="color:${color};">${idx.category || 'None'} (${idx.value}/5)</span>
-                </div>`;
+            items.push({ name: t.displayName, category: idx.category || 'None', value: idx.value });
         }
-
-        // Also show plant-level data if available
-        const plants = day.plantInfo || [];
         for (const p of plants) {
             const idx = p.indexInfo;
             if (!idx || idx.value === 0) continue;
-            const color = pollenIndexColor(idx.value);
-            html += `
-                <div class="detail-item">
-                    <span class="detail-label">${p.displayName}</span>
-                    <span class="detail-value" style="color:${color};">${idx.category} (${idx.value}/5)</span>
-                </div>`;
+            items.push({ name: p.displayName, category: idx.category, value: idx.value });
         }
 
-        if (!html) {
-            html = '<div class="detail-item"><span class="detail-value" style="color:var(--text-muted);">No significant pollen detected</span></div>';
+        if (items.length === 0) {
+            content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">No significant pollen detected</span>';
+            return;
         }
 
-        col.style.display = 'flex';
-        col.innerHTML = html;
-        btn.style.display = 'none';
+        content.innerHTML = `
+            <div class="pollen-scroll">
+                ${items.map(p => `
+                    <div class="pollen-item">
+                        <div class="detail-label">${p.name}</div>
+                        <div class="detail-value" style="color:${pollenIndexColor(p.value)};">${p.category}</div>
+                        <div style="font-size:0.7rem;color:var(--text-muted);">${p.value}/5</div>
+                    </div>`).join('')}
+            </div>
+        `;
+        initDragScroll(content.querySelector('.pollen-scroll'));
     } catch (e) {
-        col.style.display = 'flex';
-        col.innerHTML = '<div class="detail-item"><span class="detail-value" style="color:var(--text-muted);">Failed to load pollen data</span></div>';
-        btn.textContent = 'Retry';
-        btn.disabled = false;
+        content.innerHTML = '<button id="pollen-btn" class="pollen-btn">Retry</button>';
+        document.getElementById('pollen-btn').addEventListener('click', () => loadPollenData(lat, lon));
     }
 }
 
@@ -1191,8 +1195,8 @@ async function fetchAllWeatherData(lat, lon) {
             fetchAirQuality(lat, lon),
         ]);
 
-        renderCurrent(meteo.current);
-        renderDetails(meteo.current, airQuality, lat, lon);
+        renderCurrent(meteo.current, airQuality);
+        renderPollen(airQuality, lat, lon);
         renderHourly(meteo.hourly);
         renderDaily(meteo.daily, meteo.hourly);
         renderAlerts(alerts);
