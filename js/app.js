@@ -85,7 +85,10 @@ function getMoonPhase(date) {
     return { name, icon };
 }
 
+const TEMP_COLOR_THRESHOLD = 5; // °F — don't colorize if range is less than this
+
 function tempBackground(avg, minAvg, avgRange) {
+    if (avgRange < TEMP_COLOR_THRESHOLD) return 'transparent';
     const t = (avg - minAvg) / avgRange;
     if (isDarkMode()) {
         const r = Math.round(20 + t * 40);
@@ -566,6 +569,8 @@ function renderDaily(daily, hourly) {
     );
     // Store globally so theme toggle can recompute
     window._forecastAvgTemps = avgTemps;
+    const tempRange = Math.max(...avgTemps) - Math.min(...avgTemps);
+    const showTempColors = tempRange >= TEMP_COLOR_THRESHOLD;
 
     // --- Day column header (inside scroll) ---
     let dayHeaderHtml = '';
@@ -628,7 +633,7 @@ function renderDaily(daily, hourly) {
     const totalScrollW = innerW + AXIS_W * 2;
 
     section.innerHTML = `
-        <h2>10-Day Forecast</h2>
+        <h2>10-Day Forecast ${showTempColors ? '<span style="text-transform:none;font-weight:400;font-size:0.7rem;color:var(--text-muted);">— colors show relative temps: red = warmest, blue = coolest</span>' : ''}</h2>
         <div class="forecast-scroll-outer">
             <div class="forecast-scroll" style="width:${totalScrollW}px;">
                 <div class="forecast-header">
