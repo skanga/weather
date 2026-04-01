@@ -1,3 +1,8 @@
+/* Force light mode regardless of OS preference */
+:root {
+    color-scheme: light;
+}
+
 /* Reset */
 *, *::before, *::after {
     box-sizing: border-box;
@@ -151,31 +156,185 @@ section h2 {
     color: #991b1b;
 }
 
+/* Current + Hourly row */
+#current-hourly-row {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+}
+
+#current-hourly-row #current-section {
+    flex-shrink: 0;
+    min-width: 200px;
+}
+
+#current-hourly-row #hourly-section {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
 /* Hourly scroll */
 .hourly-scroll {
     display: flex;
-    gap: 1rem;
+    gap: 0.5rem;
     overflow-x: auto;
     padding-bottom: 0.5rem;
+    cursor: grab;
+}
+
+.hourly-scroll.dragging {
+    cursor: grabbing;
 }
 
 .hourly-item {
     text-align: center;
-    min-width: 70px;
+    min-width: 50px;
     font-size: 0.85rem;
+    flex-shrink: 0;
 }
 
-/* Daily forecast */
-.daily-row {
+@media (max-width: 600px) {
+    #current-hourly-row {
+        flex-direction: column;
+    }
+}
+
+/* Daily forecast - unified scroll */
+.forecast-scroll-outer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.forecast-scroll {
+    /* width set inline by JS */
+}
+
+.forecast-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
 }
 
-.daily-row:last-child {
-    border-bottom: none;
+.forecast-day {
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+    border-right: 1px solid #f3f4f6;
+    flex-shrink: 0;
+}
+
+.forecast-day:last-child {
+    border-right: none;
+}
+
+.forecast-date {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.forecast-temps {
+    margin: 0.25rem 0;
+}
+
+.temp-high {
+    color: #dc2626;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.temp-low {
+    color: #3b82f6;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+}
+
+.forecast-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    margin: 0.25rem 0;
+}
+
+.forecast-condition {
+    font-size: 0.65rem;
+    color: #6b7280;
+    line-height: 1.2;
+}
+
+.forecast-precip {
+    font-size: 0.7rem;
+    color: #3b82f6;
+    margin-top: 0.25rem;
+    min-height: 1em;
+}
+
+/* Chart rows */
+.chart-row {
+    border-top: 1px solid #f3f4f6;
+    margin-top: 0.5rem;
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.7rem;
+    color: #6b7280;
+    padding: 0.5rem 0 0.25rem;
+    position: sticky;
+    left: 0;
+    width: fit-content;
+}
+
+.chart-row-inner {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.chart-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    padding: 4px 0;
+    width: 40px;
+    min-width: 40px;
+    flex-shrink: 0;
+    background: white;
+    z-index: 2;
+}
+
+.chart-axis-left {
+    position: sticky;
+    left: 0;
+    text-align: right;
+    padding-right: 6px;
+}
+
+.chart-axis-right {
+    position: sticky;
+    right: 0;
+    text-align: left;
+    padding-left: 6px;
+}
+
+/* Forecast footer (bottom day labels) */
+.forecast-footer {
+    display: flex;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.5rem;
+}
+
+.forecast-footer-day {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* Radar */
@@ -184,11 +343,20 @@ section h2 {
     border-radius: 8px;
 }
 
-/* Astronomy */
+/* Sun & Moon row */
+#sun-moon-row {
+    display: flex;
+    gap: 1rem;
+}
+
+#sun-moon-row section {
+    flex: 1;
+}
+
 .astro-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
 }
 
 .astro-item {
@@ -203,6 +371,12 @@ section h2 {
 .astro-item .value {
     font-size: 1.1rem;
     font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    #sun-moon-row {
+        flex-direction: column;
+    }
 }
 
 /* Loading state */

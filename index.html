@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NoAdsWeather — Weather without the clutter</title>
     <meta name="description" content="Fast, ad-free weather forecasts. No tracking, no cookies, no bloat.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -37,11 +38,16 @@
         </header>
         <main id="weather-content">
             <section id="alerts-section" hidden></section>
-            <section id="current-section"></section>
-            <section id="hourly-section"></section>
+            <div id="current-hourly-row">
+                <section id="current-section"></section>
+                <section id="hourly-section"></section>
+            </div>
             <section id="daily-section"></section>
             <section id="radar-section"></section>
-            <section id="astronomy-section"></section>
+            <div id="sun-moon-row">
+                <section id="sun-section"></section>
+                <section id="moon-section"></section>
+            </div>
         </main>
     </div>
 
