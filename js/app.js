@@ -481,8 +481,9 @@ function displayPollenData(data) {
         h2.innerHTML = `Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span>`;
     }
 
+    const fewClass = items.length <= 3 ? ' pollen-few' : '';
     content.innerHTML = `
-        <div class="pollen-scroll">
+        <div class="pollen-scroll${fewClass}">
             ${items.map(p => `
                 <div class="pollen-item">
                     <div class="detail-label">${p.name}</div>

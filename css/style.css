@@ -410,6 +410,24 @@ section h2 {
     min-width: 70px;
 }
 
+/* Fewer pollen items — single row, bigger text */
+.pollen-few {
+    grid-template-rows: 1fr;
+    justify-content: center;
+}
+
+.pollen-few .pollen-item {
+    min-width: 90px;
+}
+
+.pollen-few .detail-label {
+    font-size: 0.9rem;
+}
+
+.pollen-few .detail-value {
+    font-size: 1.1rem;
+}
+
 .current-detail-col {
     display: flex;
     flex-direction: column;
