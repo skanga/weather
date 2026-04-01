@@ -227,22 +227,120 @@ section h2 {
     color: var(--alert-text);
 }
 
-/* Current + Hourly row */
-#current-hourly-row {
+/* Current + Details row */
+#current-details-row {
     display: flex;
     gap: 1rem;
     align-items: stretch;
 }
 
-#current-hourly-row #current-section {
-    flex-shrink: 0;
-    min-width: 200px;
+#current-details-row #current-section {
+    flex: 1;
 }
 
-#current-hourly-row #hourly-section {
+#current-details-row #details-section {
     flex: 1;
-    min-width: 0;
-    overflow: hidden;
+}
+
+.current-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.current-icon-block {
+    text-align: center;
+}
+
+.current-icon-block .icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.current-icon-block .condition {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.current-temp-block .temp {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.current-temp-block .feels-like {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+}
+
+.current-sub {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Pollen button */
+.pollen-btn {
+    text-transform: none;
+    font-weight: 400;
+    font-size: 0.75rem;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    transition: background 0.2s;
+}
+
+.pollen-btn:hover {
+    background: var(--accent-hover);
+}
+
+.pollen-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* Details grid */
+.details-grid {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.current-detail-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.current-detail-col .detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.current-detail-col .detail-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.current-detail-col .detail-value {
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    #current-details-row {
+        flex-direction: column;
+    }
 }
 
 /* Hourly scroll */
@@ -263,12 +361,6 @@ section h2 {
     min-width: 50px;
     font-size: 0.85rem;
     flex-shrink: 0;
-}
-
-@media (max-width: 600px) {
-    #current-hourly-row {
-        flex-direction: column;
-    }
 }
 
 /* Daily forecast - unified scroll */

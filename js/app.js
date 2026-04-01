@@ -85,6 +85,32 @@ function getMoonPhase(date) {
     return { name, icon };
 }
 
+function tempBackground(avg, minAvg, avgRange) {
+    const t = (avg - minAvg) / avgRange;
+    if (isDarkMode()) {
+        const r = Math.round(20 + t * 40);
+        const g = Math.round(50 - t * 15);
+        const b = Math.round(50 - t * 35);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+    const r = Math.round(214 + t * 39);
+    const g = Math.round(228 - t * 14);
+    const b = Math.round(253 - t * 39);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function updateDayBackgrounds() {
+    const avgTemps = window._forecastAvgTemps;
+    if (!avgTemps) return;
+    const minAvg = Math.min(...avgTemps);
+    const avgRange = (Math.max(...avgTemps) - minAvg) || 1;
+    document.querySelectorAll('.forecast-day').forEach((el, i) => {
+        if (i < avgTemps.length) {
+            el.style.background = tempBackground(avgTemps[i], minAvg, avgRange);
+        }
+    });
+}
+
 // --- API Functions -----------------------------------------------------------
 
 async function geocodeFetch(name) {
@@ -212,8 +238,8 @@ function showLocationPicker(results) {
         html += '<div style="display:flex;flex-direction:column;gap:0.25rem;margin-top:0.5rem;">';
         results.forEach((r, i) => {
             html += `<button class="location-pick" data-idx="${i}" style="
-                text-align:left;padding:0.5rem 0.75rem;background:white;
-                border:1px solid #d1d5db;border-radius:6px;cursor:pointer;
+                text-align:left;padding:0.5rem 0.75rem;background:var(--card-bg);color:var(--text);
+                border:1px solid var(--border);border-radius:6px;cursor:pointer;
                 font-size:0.9rem;transition:background 0.15s;
             ">${r.name}, ${r.region}, ${r.country}</button>`;
         });
@@ -236,7 +262,7 @@ async function fetchOpenMeteo(lat, lon) {
     const params = new URLSearchParams({
         latitude: lat,
         longitude: lon,
-        current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m',
+        current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index',
         hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,cloud_cover,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure',
         daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset',
         temperature_unit: 'fahrenheit',
@@ -249,6 +275,63 @@ async function fetchOpenMeteo(lat, lon) {
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
     if (!res.ok) throw new Error('Weather data request failed');
     return res.json();
+}
+
+async function fetchAirQuality(lat, lon) {
+    try {
+        const params = new URLSearchParams({
+            latitude: lat,
+            longitude: lon,
+            current: 'us_aqi,grass_pollen,birch_pollen,ragweed_pollen,alder_pollen,olive_pollen,mugwort_pollen',
+        });
+        const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
+        if (!res.ok) return null;
+        return (await res.json()).current;
+    } catch {
+        return null;
+    }
+}
+
+function aqiLabel(aqi) {
+    if (aqi <= 50) return { text: 'Good', color: '#16a34a' };
+    if (aqi <= 100) return { text: 'Moderate', color: '#ca8a04' };
+    if (aqi <= 150) return { text: 'Unhealthy (Sensitive)', color: '#ea580c' };
+    if (aqi <= 200) return { text: 'Unhealthy', color: '#dc2626' };
+    if (aqi <= 300) return { text: 'Very Unhealthy', color: '#7c3aed' };
+    return { text: 'Hazardous', color: '#7f1d1d' };
+}
+
+function pollenSummary(aq) {
+    if (!aq) return null;
+    const types = [
+        { name: 'Grass', val: aq.grass_pollen },
+        { name: 'Birch', val: aq.birch_pollen },
+        { name: 'Ragweed', val: aq.ragweed_pollen },
+        { name: 'Alder', val: aq.alder_pollen },
+        { name: 'Olive', val: aq.olive_pollen },
+        { name: 'Mugwort', val: aq.mugwort_pollen },
+    ].filter(t => t.val !== null && t.val !== undefined);
+    if (types.length === 0) return null;
+
+    function level(v) {
+        if (v <= 10) return 'Low';
+        if (v <= 50) return 'Moderate';
+        if (v <= 100) return 'High';
+        return 'Very High';
+    }
+    function levelColor(v) {
+        if (v <= 10) return '#16a34a';
+        if (v <= 50) return '#ca8a04';
+        if (v <= 100) return '#ea580c';
+        return '#dc2626';
+    }
+
+    return types.map(t => ({
+        name: t.name,
+        level: level(t.val),
+        color: levelColor(t.val),
+        value: Math.round(t.val),
+    }));
 }
 
 async function fetchAlerts(lat, lon) {
@@ -272,18 +355,139 @@ function renderCurrent(current) {
     const section = document.getElementById('current-section');
     section.innerHTML = `
         <h2>Current Conditions</h2>
-        <div style="display:flex;align-items:center;gap:1rem;">
-            <span style="font-size:3rem;">${info.icon}</span>
-            <div>
-                <div style="font-size:2rem;font-weight:700;">${Math.round(current.temperature_2m)}°F</div>
-                <div>${info.text}</div>
+        <div class="current-main">
+            <div class="current-icon-block">
+                <div class="icon">${info.icon}</div>
+                <div class="condition">${info.text}</div>
+            </div>
+            <div class="current-temp-block">
+                <div class="temp">${Math.round(current.temperature_2m)}°F</div>
+                <div class="feels-like">Feels like ${Math.round(current.apparent_temperature)}°F</div>
             </div>
         </div>
-        <div style="margin-top:0.75rem;display:flex;gap:1.5rem;color:#6b7280;font-size:0.9rem;">
+        <div class="current-sub">
             <span>Humidity: ${current.relative_humidity_2m}%</span>
+            <span>Dew Point: ${Math.round(current.dew_point_2m)}°F</span>
             <span>Wind: ${Math.round(current.wind_speed_10m)} mph ${windDirection(current.wind_direction_10m)}</span>
         </div>
     `;
+}
+
+const POLLEN_PROXY_URL = 'https://pollen-proxy-15838356607.us-central1.run.app';
+
+function renderDetails(current, airQuality, lat, lon) {
+    const section = document.getElementById('details-section');
+    const uvVal = Math.round(current.uv_index);
+    const aqi = airQuality ? airQuality.us_aqi : null;
+    const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
+    const openMeteoPollen = pollenSummary(airQuality);
+    const hasFreePollen = openMeteoPollen && openMeteoPollen.length > 0;
+
+    // Build pollen column HTML if Open-Meteo has data (Europe)
+    let pollenColHtml = '';
+    if (hasFreePollen) {
+        pollenColHtml = openMeteoPollen.map(p => `
+            <div class="detail-item">
+                <span class="detail-label">${p.name} Pollen</span>
+                <span class="detail-value" style="color:${p.color};">${p.level}</span>
+            </div>`).join('');
+    }
+
+    section.innerHTML = `
+        <h2>Details ${!hasFreePollen ? '<button id="pollen-btn" class="pollen-btn">See pollen data</button>' : ''}</h2>
+        <div class="details-grid">
+            <div class="current-detail-col">
+                <div class="detail-item">
+                    <span class="detail-label">UV Index</span>
+                    <span class="detail-value">${uvVal} ${uvVal <= 2 ? '(Low)' : uvVal <= 5 ? '(Moderate)' : uvVal <= 7 ? '(High)' : uvVal <= 10 ? '(Very High)' : '(Extreme)'}</span>
+                </div>
+                ${aqiInfo ? `
+                <div class="detail-item">
+                    <span class="detail-label">Air Quality</span>
+                    <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
+                </div>` : ''}
+                <div class="detail-item">
+                    <span class="detail-label">Wind Gusts</span>
+                    <span class="detail-value">${Math.round(current.wind_gusts_10m)} mph</span>
+                </div>
+            </div>
+            <div id="pollen-col" class="current-detail-col" style="${hasFreePollen ? '' : 'display:none;'}">${pollenColHtml}</div>
+        </div>
+    `;
+
+    if (!hasFreePollen) {
+        document.getElementById('pollen-btn').addEventListener('click', () => {
+            loadPollenData(lat, lon);
+        });
+    }
+}
+
+async function loadPollenData(lat, lon) {
+    const btn = document.getElementById('pollen-btn');
+    const col = document.getElementById('pollen-col');
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${POLLEN_PROXY_URL}?lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+
+        if (data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
+            col.style.display = 'flex';
+            col.innerHTML = '<div class="detail-item"><span class="detail-value" style="color:var(--text-muted);">Pollen data unavailable for this location</span></div>';
+            btn.style.display = 'none';
+            return;
+        }
+
+        const day = data.dailyInfo[0];
+        const types = day.pollenTypeInfo || [];
+
+        let html = '';
+        for (const t of types) {
+            const idx = t.indexInfo;
+            if (!idx) continue;
+            const color = pollenIndexColor(idx.value);
+            html += `
+                <div class="detail-item">
+                    <span class="detail-label">${t.displayName}</span>
+                    <span class="detail-value" style="color:${color};">${idx.category || 'None'} (${idx.value}/5)</span>
+                </div>`;
+        }
+
+        // Also show plant-level data if available
+        const plants = day.plantInfo || [];
+        for (const p of plants) {
+            const idx = p.indexInfo;
+            if (!idx || idx.value === 0) continue;
+            const color = pollenIndexColor(idx.value);
+            html += `
+                <div class="detail-item">
+                    <span class="detail-label">${p.displayName}</span>
+                    <span class="detail-value" style="color:${color};">${idx.category} (${idx.value}/5)</span>
+                </div>`;
+        }
+
+        if (!html) {
+            html = '<div class="detail-item"><span class="detail-value" style="color:var(--text-muted);">No significant pollen detected</span></div>';
+        }
+
+        col.style.display = 'flex';
+        col.innerHTML = html;
+        btn.style.display = 'none';
+    } catch (e) {
+        col.style.display = 'flex';
+        col.innerHTML = '<div class="detail-item"><span class="detail-value" style="color:var(--text-muted);">Failed to load pollen data</span></div>';
+        btn.textContent = 'Retry';
+        btn.disabled = false;
+    }
+}
+
+function pollenIndexColor(value) {
+    if (value <= 1) return '#16a34a';  // Low - green
+    if (value <= 2) return '#84cc16';  // Low-Medium - lime
+    if (value <= 3) return '#ca8a04';  // Medium - yellow
+    if (value <= 4) return '#ea580c';  // High - orange
+    return '#dc2626';                   // Very High - red
 }
 
 function renderHourly(hourly) {
@@ -328,26 +532,8 @@ function renderDaily(daily, hourly) {
     const avgTemps = daily.time.map((_, i) =>
         (daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2
     );
-    const minAvg = Math.min(...avgTemps);
-    const maxAvg = Math.max(...avgTemps);
-    const avgRange = maxAvg - minAvg || 1;
-
-    function tempBackground(avg) {
-        const t = (avg - minAvg) / avgRange;
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        if (isDark) {
-            // Dark mode: cool = dark blue, warm = dark red
-            const r = Math.round(30 + t * 40);
-            const g = Math.round(40 - t * 10);
-            const b = Math.round(60 - t * 30);
-            return `rgb(${r}, ${g}, ${b})`;
-        }
-        // Light mode: cool = light blue, warm = light red
-        const r = Math.round(214 + t * 39);
-        const g = Math.round(228 - t * 14);
-        const b = Math.round(253 - t * 39);
-        return `rgb(${r}, ${g}, ${b})`;
-    }
+    // Store globally so theme toggle can recompute
+    window._forecastAvgTemps = avgTemps;
 
     // --- Day column header (inside scroll) ---
     let dayHeaderHtml = '';
@@ -357,7 +543,9 @@ function renderDaily(daily, hourly) {
         const dateLabel = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
         const info = weatherInfo(daily.weather_code[i]);
         const precip = daily.precipitation_sum[i];
-        const bg = tempBackground(avgTemps[i]);
+        const minA = Math.min(...avgTemps);
+        const rangeA = (Math.max(...avgTemps) - minA) || 1;
+        const bg = tempBackground(avgTemps[i], minA, rangeA);
         dayHeaderHtml += `
             <div class="forecast-day" style="width:${DAY_WIDTH}px;min-width:${DAY_WIDTH}px;background:${bg};">
                 <div class="forecast-date">${dayLabel} ${dateLabel}</div>
@@ -812,14 +1000,20 @@ function renderSunMoon(daily, lat, lon) {
         return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     };
 
+    const fmtDate = (d) => {
+        if (!d || isNaN(d)) return '';
+        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    };
+
     // Sun
     const sunrise = new Date(daily.sunrise[0]);
     const sunset = new Date(daily.sunset[0]);
     const solarNoon = new Date((sunrise.getTime() + sunset.getTime()) / 2);
+    const sunDateLabel = fmtDate(sunrise);
 
     const sunSection = document.getElementById('sun-section');
     sunSection.innerHTML = `
-        <h2>Sun</h2>
+        <h2>Sun <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${sunDateLabel})</span></h2>
         <div class="astro-grid">
             <div class="astro-item">
                 <div style="font-size:1.5rem;">🌅</div>
@@ -844,9 +1038,21 @@ function renderSunMoon(daily, lat, lon) {
     const moon = getMoonPhase(now);
     const moonTimes = getMoonTimes(now, lat, lon);
 
+    // Moon date label — show range if moonset is on a different day than moonrise
+    let moonDateLabel;
+    if (moonTimes.rise && moonTimes.set) {
+        const riseDate = fmtDate(moonTimes.rise);
+        const setDate = fmtDate(moonTimes.set);
+        moonDateLabel = riseDate === setDate ? riseDate : `${riseDate} – ${setDate}`;
+    } else if (moonTimes.rise) {
+        moonDateLabel = fmtDate(moonTimes.rise);
+    } else {
+        moonDateLabel = fmtDate(now);
+    }
+
     const moonSection = document.getElementById('moon-section');
     moonSection.innerHTML = `
-        <h2>Moon</h2>
+        <h2>Moon <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${moonDateLabel})</span></h2>
         <div class="astro-grid">
             <div class="astro-item">
                 <div style="font-size:1.5rem;">🌔</div>
@@ -855,7 +1061,7 @@ function renderSunMoon(daily, lat, lon) {
             </div>
             <div class="astro-item">
                 <div style="font-size:1.5rem;">${moon.icon}</div>
-                <div class="label">Moon Phase</div>
+                <div class="label">Moon</div>
                 <div class="value">${moon.name}</div>
             </div>
             <div class="astro-item">
@@ -871,34 +1077,30 @@ function renderSunMoon(daily, lat, lon) {
 // Simplified algorithm based on Jean Meeus "Astronomical Algorithms"
 
 function getMoonTimes(date, lat, lon) {
-    const RAD = Math.PI / 180;
-    const dayOfYear = getDayOfYear(date);
-    const year = date.getFullYear();
-
-    // Approximate moon position for each hour, find rise/set by altitude crossing
-    const rise = findMoonEvent(date, lat, lon, 'rise');
-    const set = findMoonEvent(date, lat, lon, 'set');
+    // Find first moonrise from start of day, then first moonset after that rise
+    const rise = findMoonEvent(date, lat, lon, 'rise', 1440);
+    const searchStart = rise || date;
+    const set = findMoonEvent(searchStart, lat, lon, 'set', 1440);
     return { rise, set };
 }
 
-function findMoonEvent(date, lat, lon, type) {
-    const RAD = Math.PI / 180;
+function findMoonEvent(date, lat, lon, type, maxMinutes) {
     const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const startTime = (type === 'set' && date > startOfDay) ? date : startOfDay;
 
-    let prevAlt = moonAltitude(startOfDay, lat, lon);
+    let prevAlt = moonAltitude(startTime, lat, lon);
 
-    for (let m = 10; m <= 1440; m += 10) {
-        const t = new Date(startOfDay.getTime() + m * 60000);
+    for (let m = 10; m <= maxMinutes; m += 10) {
+        const t = new Date(startTime.getTime() + m * 60000);
         const alt = moonAltitude(t, lat, lon);
 
         if (type === 'rise' && prevAlt < -0.833 && alt >= -0.833) {
-            // Interpolate
             const frac = (0 - prevAlt) / (alt - prevAlt);
-            return new Date(startOfDay.getTime() + (m - 10 + frac * 10) * 60000);
+            return new Date(startTime.getTime() + (m - 10 + frac * 10) * 60000);
         }
         if (type === 'set' && prevAlt >= -0.833 && alt < -0.833) {
             const frac = (0 - prevAlt) / (alt - prevAlt);
-            return new Date(startOfDay.getTime() + (m - 10 + frac * 10) * 60000);
+            return new Date(startTime.getTime() + (m - 10 + frac * 10) * 60000);
         }
         prevAlt = alt;
     }
@@ -968,9 +1170,14 @@ function getDayOfYear(date) {
 
 // --- Orchestrator ------------------------------------------------------------
 
+let _lastLat = null, _lastLon = null;
+
 async function fetchAllWeatherData(lat, lon) {
+    _lastLat = lat;
+    _lastLon = lon;
     document.getElementById('alerts-section').hidden = true;
     document.getElementById('current-section').innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById('details-section').innerHTML = '';
     document.getElementById('hourly-section').innerHTML = '';
     document.getElementById('daily-section').innerHTML = '';
     document.getElementById('radar-section').innerHTML = '';
@@ -978,12 +1185,14 @@ async function fetchAllWeatherData(lat, lon) {
     document.getElementById('moon-section').innerHTML = '';
 
     try {
-        const [meteo, alerts] = await Promise.all([
+        const [meteo, alerts, airQuality] = await Promise.all([
             fetchOpenMeteo(lat, lon),
             fetchAlerts(lat, lon),
+            fetchAirQuality(lat, lon),
         ]);
 
         renderCurrent(meteo.current);
+        renderDetails(meteo.current, airQuality, lat, lon);
         renderHourly(meteo.hourly);
         renderDaily(meteo.daily, meteo.hourly);
         renderAlerts(alerts);
@@ -1086,6 +1295,8 @@ window.addEventListener('popstate', () => {
         document.documentElement.setAttribute('data-theme', theme);
         toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
         localStorage.setItem('theme', theme);
+        updateDayBackgrounds();
+        if (_lastLat !== null) renderRadar(_lastLat, _lastLon);
     }
 
     // Initialize: use stored preference, fall back to OS preference
