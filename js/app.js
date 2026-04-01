@@ -931,17 +931,10 @@ async function loadRadar(lat, lon) {
         const offsetY = 50 - (2 + fracY) / gridSize * 500;
 
         function buildTileGrid(tileSrcFn, extraStyle) {
-            // Use absolute positioning per tile instead of CSS grid to eliminate seam artifacts
-            const tilePct = 100 / gridSize;
-            let html = `<div style="position:absolute;left:${offsetX}%;top:${offsetY}%;width:${gridSize * 100}%;height:${gridSize * 100}%;${extraStyle || ''}">`;
-            let idx = 0;
+            let html = `<div style="position:absolute;left:${offsetX}%;top:${offsetY}%;width:${gridSize * 100}%;height:${gridSize * 100}%;display:grid;grid-template-columns:repeat(${gridSize},1fr);${extraStyle || ''}">`;
             for (let dy = -2; dy <= 2; dy++) {
                 for (let dx = -2; dx <= 2; dx++) {
-                    const col = dx + 2;
-                    const row = dy + 2;
-                    // Overlap each tile by 0.5px on each side to prevent seam lines
-                    html += `<img src="${tileSrcFn(centerTileX + dx, centerTileY + dy)}" alt="" style="position:absolute;left:${col * tilePct}%;top:${row * tilePct}%;width:${tilePct + 0.2}%;height:${tilePct + 0.2}%;display:block;">`;
-                    idx++;
+                    html += `<img src="${tileSrcFn(centerTileX + dx, centerTileY + dy)}" alt="" style="width:100%;height:100%;display:block;">`;
                 }
             }
             return html + '</div>';
