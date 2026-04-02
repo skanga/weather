@@ -313,16 +313,21 @@ body {
 /* Section controls (drag handle + minimize) */
 .section-controls {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 0;
+    right: 0;
     display: flex;
     gap: 0.3rem;
     z-index: 5;
-    opacity: 0.4;
-    transition: opacity 0.2s;
+    padding: 0.5rem;
 }
 
-section:hover .section-controls {
+.section-controls button,
+.section-controls span {
+    opacity: 0.5;
+}
+
+.section-controls button:hover,
+.section-controls span:hover {
     opacity: 1;
 }
 
@@ -351,6 +356,10 @@ section:hover .section-controls {
 }
 
 .section-width-btn:hover,
+.section-min-btn:hover {
+    color: var(--text);
+}
+
 /* Layout locked — hide all section controls */
 body.layout-locked .section-controls {
     display: none !important;
@@ -458,8 +467,15 @@ section {
     box-shadow: var(--card-shadow);
     transition: background 0.3s;
     min-width: 0;
-    overflow: hidden;
     margin-top: 0;
+}
+
+/* Only apply overflow hidden where needed for scrollable content */
+#hourly-section,
+#daily-section,
+#details-section,
+#radar-section {
+    overflow: hidden;
 }
 
 /* Ensure spacing after column-spanning elements */
@@ -920,6 +936,29 @@ body.is-dragging .weather-col:empty {
 .radar-refresh-btn:hover {
     color: var(--text);
     transform: rotate(180deg);
+}
+
+.radar-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.radar-ctrl-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding: 0.15rem 0.4rem;
+    line-height: 1;
+    transition: background 0.2s;
+}
+
+.radar-ctrl-btn:hover {
+    background: var(--btn-hover-bg);
+    color: var(--text);
 }
 
 #radar-section img {

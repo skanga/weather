@@ -1848,7 +1848,15 @@ function renderRadar(lat, lon) {
         <div id="radar-container" style="position:relative;width:100%;aspect-ratio:1;background:#1a1a2e;border-radius:8px;overflow:hidden;">
             <div class="loading" style="color:#9ca3af;">Loading radar...</div>
         </div>
-        <div id="radar-time" style="text-align:center;font-size:0.8rem;color:#6b7280;margin-top:0.5rem;"></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-top:0.5rem;">
+            <div id="radar-time" style="font-size:0.8rem;color:#6b7280;"></div>
+            <div class="radar-controls">
+                <button id="radar-pause" class="radar-ctrl-btn" title="Pause">⏸</button>
+                <button id="radar-slower" class="radar-ctrl-btn" title="Slower">−</button>
+                <span id="radar-speed-label" style="font-size:0.7rem;color:var(--text-muted);min-width:2.5rem;text-align:center;">1x</span>
+                <button id="radar-faster" class="radar-ctrl-btn" title="Faster">+</button>
+            </div>
+        </div>
     `;
     loadRadar(lat, lon);
 
@@ -1938,16 +1946,60 @@ async function loadRadar(lat, lon) {
         };
         showFrameTime(frames[frames.length - 1]);
 
-        // Animate through frames
+        // Animate through frames with speed/pause controls
         let currentFrame = frames.length - 1;
         const allFrameEls = container.querySelectorAll('.radar-frame');
+        const speeds = [2000, 1000, 500, 250, 125];
+        const speedLabels = ['0.25x', '0.5x', '1x', '2x', '4x'];
+        let speedIdx = parseInt(localStorage.getItem('radarSpeed') || '2');
+        if (speedIdx < 0 || speedIdx >= speeds.length) speedIdx = 2;
+        let paused = false;
 
-        radarInterval = setInterval(() => {
-            allFrameEls[currentFrame].style.opacity = '0';
-            currentFrame = (currentFrame + 1) % frames.length;
-            allFrameEls[currentFrame].style.opacity = '1';
-            showFrameTime(frames[currentFrame]);
-        }, 500);
+        function startAnimation() {
+            if (radarInterval) clearInterval(radarInterval);
+            radarInterval = setInterval(() => {
+                if (paused) return;
+                allFrameEls[currentFrame].style.opacity = '0';
+                currentFrame = (currentFrame + 1) % frames.length;
+                allFrameEls[currentFrame].style.opacity = '1';
+                showFrameTime(frames[currentFrame]);
+            }, speeds[speedIdx]);
+        }
+
+        function updateSpeedLabel() {
+            const label = document.getElementById('radar-speed-label');
+            if (label) label.textContent = speedLabels[speedIdx];
+        }
+
+        startAnimation();
+        updateSpeedLabel();
+
+        const pauseBtn = document.getElementById('radar-pause');
+        if (pauseBtn) pauseBtn.addEventListener('click', () => {
+            paused = !paused;
+            pauseBtn.textContent = paused ? '▶' : '⏸';
+            pauseBtn.title = paused ? 'Play' : 'Pause';
+        });
+
+        const slowerBtn = document.getElementById('radar-slower');
+        if (slowerBtn) slowerBtn.addEventListener('click', () => {
+            if (speedIdx > 0) {
+                speedIdx--;
+                localStorage.setItem('radarSpeed', speedIdx);
+                updateSpeedLabel();
+                startAnimation();
+            }
+        });
+
+        const fasterBtn = document.getElementById('radar-faster');
+        if (fasterBtn) fasterBtn.addEventListener('click', () => {
+            if (speedIdx < speeds.length - 1) {
+                speedIdx++;
+                localStorage.setItem('radarSpeed', speedIdx);
+                updateSpeedLabel();
+                startAnimation();
+            }
+        });
 
     } catch {
         document.getElementById('radar-container').innerHTML =
