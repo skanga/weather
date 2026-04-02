@@ -1,0 +1,2929 @@
+// =============================================================================
+// NoAdsWeather - app.js
+//
+// Main application file for NoAdsWeather.com, a privacy-focused vanilla JS
+// weather site. Handles:
+//   - Unit system management (imperial/metric, 12h/24h)
+//   - Section layout preferences (drag-to-reorder, minimize, hide, column width)
+//   - Geocoding (city name / US zip code to coordinates)
+//   - Weather data fetching from Open-Meteo API
+//   - Air quality + pollen data (Open-Meteo + Google Pollen API via proxy)
+//   - NWS weather alerts (US only)
+//   - Radar animation (RainViewer + CartoDB map tiles)
+//   - 10-day forecast with interactive canvas charts
+//   - Moonrise/moonset astronomical calculations
+//   - Weather summary sentence generation
+//   - Dark mode with theme persistence
+//   - Privacy panel
+// =============================================================================
+
+// =============================================================================
+// SECTION: Units System
+// Manages temperature (F/C), wind speed (mph/km/h), precipitation (in/mm),
+// pressure (inHg/hPa), and time format (12h/24h). Detects country from
+// geocoding result or uses stored user preference.
+// =============================================================================
+
+/** Countries that default to imperial units (Fahrenheit, mph, inches) */
+const IMPERIAL_COUNTRIES = ['United States', 'Liberia', 'Myanmar'];
+
+/**
+ * Global mutable units state object.
+ * Updated by applyUnitsFromTemp(), setUnitsForCountry(), and toggleUnits().
+ */
+let units = {
+    temp: 'fahrenheit',
+    wind: 'mph',
+    precip: 'inch',
+    pressure: 'inHg',
+    time24h: false,
+};
+
+/**
+ * Check whether the current unit system is imperial (Fahrenheit-based).
+ * @returns {boolean} True if units are imperial
+ */
+function isImperial() { return units.temp === 'fahrenheit'; }
+
+/**
+ * Persist the user's temperature and time format preference to localStorage.
+ * Only stores temp and time24h; wind/precip/pressure are derived from temp.
+ */
+function saveUnitsPref() {
+    localStorage.setItem('unitsPref', JSON.stringify({ temp: units.temp, time24h: units.time24h }));
+}
+
+/**
+ * Load the user's stored unit preference from localStorage.
+ * @returns {Object|null} Stored preference object {temp, time24h}, or null if none saved
+ */
+function loadUnitsPref() {
+    return JSON.parse(localStorage.getItem('unitsPref') || 'null');
+}
+
+/**
+ * Set all unit fields (wind, precip, pressure) based on the temperature unit.
+ * Imperial uses mph/inch/inHg; metric uses kmh/mm/hPa.
+ * @param {string} temp - Either 'fahrenheit' or 'celsius'
+ */
+function applyUnitsFromTemp(temp) {
+    const imperial = temp === 'fahrenheit';
+    units.temp = temp;
+    units.wind = imperial ? 'mph' : 'kmh';
+    units.precip = imperial ? 'inch' : 'mm';
+    units.pressure = imperial ? 'inHg' : 'hPa';
+}
+
+/**
+ * Initialize units based on the geocoded country. Uses stored preference if
+ * available; otherwise auto-detects from country (imperial for US/Liberia/Myanmar,
+ * metric for everywhere else).
+ * @param {string} country - Full country name from geocoding result
+ */
+function setUnitsForCountry(country) {
+    const stored = loadUnitsPref();
+    if (stored) {
+        // User has a stored preference — use it
+        applyUnitsFromTemp(stored.temp);
+        units.time24h = stored.time24h;
+    } else {
+        // No stored preference — auto-detect from country
+        if (IMPERIAL_COUNTRIES.includes(country)) {
+            units = { temp: 'fahrenheit', wind: 'mph', precip: 'inch', pressure: 'inHg', time24h: false };
+        } else {
+            units = { temp: 'celsius', wind: 'kmh', precip: 'mm', pressure: 'hPa', time24h: true };
+        }
+    }
+    updateUnitsToggleLabel();
+}
+
+/**
+ * Toggle between imperial and metric. Flips F<->C, updates all derived units,
+ * refreshes toggle button labels, and saves the preference.
+ */
+function toggleUnits() {
+    applyUnitsFromTemp(isImperial() ? 'celsius' : 'fahrenheit');
+    updateUnitsToggleLabel();
+    saveUnitsPref();
+}
+
+/**
+ * Update the text content of the temperature and time toggle buttons in the UI.
+ * The temp button shows the *other* unit (what you'd switch to).
+ * The time button shows the *other* format (what you'd switch to).
+ */
+function updateUnitsToggleLabel() {
+    const btn = document.getElementById('units-toggle');
+    if (btn) btn.textContent = isImperial() ? '°C' : '°F';
+    const timeBtn = document.getElementById('time-toggle');
+    if (timeBtn) timeBtn.textContent = units.time24h ? '12H' : '24H';
+}
+
+/**
+ * Get the display string for temperature units.
+ * @returns {string} '°F' or '°C'
+ */
+function tempUnit() { return isImperial() ? '°F' : '°C'; }
+
+/**
+ * Get the display string for wind speed units.
+ * @returns {string} 'mph' or 'km/h'
+ */
+function windUnit() { return isImperial() ? 'mph' : 'km/h'; }
+
+/**
+ * Get the display string for precipitation units.
+ * @returns {string} '"' (inches) or 'mm'
+ */
+function precipUnit() { return isImperial() ? '"' : 'mm'; }
+
+/**
+ * Format a Date object as a time string respecting the user's 12h/24h preference.
+ * Returns an em-dash for invalid dates.
+ * @param {Date} date - The date/time to format
+ * @returns {string} Formatted time string (e.g., "3:45 PM" or "15:45")
+ */
+function fmtTimeUnit(date) {
+    if (!date || isNaN(date)) return '—';
+    if (units.time24h) {
+        return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/**
+ * Format a precipitation value with appropriate unit suffix.
+ * Imperial: 2 decimal places + " (inches). Metric: 1 decimal + mm.
+ * @param {number} val - Precipitation amount in current units
+ * @returns {string} Formatted precipitation string (e.g., '0.25"' or '6.4mm')
+ */
+function fmtPrecip(val) {
+    if (isImperial()) return val.toFixed(2) + '"';
+    return val.toFixed(1) + 'mm';
+}
+
+// =============================================================================
+// SECTION: Section Preferences System
+// Manages the layout, ordering, visibility, and minimization state of weather
+// sections on the page. Sections can be placed in left column, right column,
+// or span full width. State is persisted to localStorage.
+// =============================================================================
+
+/** Default ordering of section IDs (used as canonical list of all sections) */
+const DEFAULT_SECTION_ORDER = [
+    'current-section', 'details-section', 'hourly-section', 'daily-section',
+    'radar-section', 'sun-section', 'moon-section'
+];
+
+/**
+ * Default layout: ordered list of sections with column assignments.
+ * 'left' = left column, 'right' = right column, 'wide' = spans both columns.
+ */
+const DEFAULT_LAYOUT_LIST = [
+    { id: 'current-section', col: 'left' },
+    { id: 'details-section', col: 'right' },
+    { id: 'hourly-section', col: 'wide' },
+    { id: 'daily-section', col: 'wide' },
+    { id: 'radar-section', col: 'left' },
+    { id: 'sun-section', col: 'right' },
+    { id: 'moon-section', col: 'right' },
+];
+
+/** Default ordering of chart rows within the 10-day forecast section */
+const DEFAULT_CHART_ORDER = ['chart-temp', 'chart-atmos', 'chart-precip', 'chart-wind'];
+
+/** Sections that default to full-width (wide) layout */
+const DEFAULT_WIDE_SECTIONS = ['daily-section', 'hourly-section'];
+
+/** Human-readable display names for each section, used in UI controls */
+const SECTION_NAMES = {
+    'current-section': 'Current Conditions',
+    'details-section': 'Pollen',
+    'hourly-section': 'Hourly Forecast',
+    'daily-section': '10-Day Forecast',
+    'radar-section': 'Radar',
+    'sun-section': 'Sun',
+    'moon-section': 'Moon',
+};
+
+/**
+ * Load section layout preferences from localStorage.
+ * Validates the stored data and falls back to defaults if the structure is
+ * outdated (e.g., missing layoutList from an older version).
+ * @returns {Object} Preferences object with: layoutList, hidden, minimized, chartOrder, hiddenCharts
+ */
+function loadSectionPrefs() {
+    const stored = JSON.parse(localStorage.getItem('sectionPrefs') || 'null');
+    // Validate — if missing layoutList, reset (handles migration from older format)
+    if (stored && !stored.layoutList) {
+        localStorage.removeItem('sectionPrefs');
+        return { layoutList: JSON.parse(JSON.stringify(DEFAULT_LAYOUT_LIST)), hidden: [], minimized: [], chartOrder: [...DEFAULT_CHART_ORDER], hiddenCharts: [] };
+    }
+    const prefs = stored || {
+        order: [...DEFAULT_SECTION_ORDER],
+        hidden: [],
+        minimized: [],
+        chartOrder: [...DEFAULT_CHART_ORDER],
+        hiddenCharts: [],
+    };
+    if (!prefs.hiddenCharts) prefs.hiddenCharts = [];
+    if (!prefs.layoutList) prefs.layoutList = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_LIST));
+    return prefs;
+}
+
+/**
+ * Save section layout preferences to localStorage.
+ * @param {Object} prefs - The preferences object to persist
+ */
+function saveSectionPrefs(prefs) {
+    localStorage.setItem('sectionPrefs', JSON.stringify(prefs));
+}
+
+/**
+ * Apply all section preferences to the DOM.
+ * Rebuilds the two-column layout by:
+ *   1. Resetting all sections to default state
+ *   2. Removing old layout rows
+ *   3. Walking through layoutList to create columns-row containers
+ *   4. Grouping consecutive left/right items into shared rows; wide items break rows
+ *   5. Applying hidden/minimized states
+ *   6. Reordering chart rows and injecting section controls
+ */
+function applySectionPreferences() {
+    const prefs = loadSectionPrefs();
+    const container = document.getElementById('weather-content');
+    if (!container) return;
+
+    // Reset all sections: unhide, un-minimize, remove wide class, move to container
+    for (const id of DEFAULT_SECTION_ORDER) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = '';
+            el.classList.remove('section-minimized');
+            el.classList.remove('section-wide');
+            // Move back to container temporarily (will be re-placed below)
+            container.appendChild(el);
+        }
+    }
+
+    // Remove old layout rows from previous render
+    container.querySelectorAll('.columns-row').forEach(r => r.remove());
+
+    // Build layout from prefs.layoutList.
+    // Walk through the list and group consecutive left/right items into columns-rows.
+    // Wide items flush any pending column pair and get inserted directly.
+    const spacer = container.querySelector('.bottom-spacer');
+    let currentLeft = [];
+    let currentRight = [];
+
+    /**
+     * Flush accumulated left/right sections into a new columns-row div.
+     * Creates a two-column row with .weather-col children for left and right.
+     * @param {boolean} force - If true, create the row even when both columns are empty
+     *                          (used to create an empty drop-target row at the end)
+     */
+    function flushColumns(force) {
+        if (!force && currentLeft.length === 0 && currentRight.length === 0) return;
+        const row = document.createElement('div');
+        row.className = 'columns-row';
+        const left = document.createElement('div');
+        left.className = 'weather-col';
+        const right = document.createElement('div');
+        right.className = 'weather-col';
+        for (const el of currentLeft) left.appendChild(el);
+        for (const el of currentRight) right.appendChild(el);
+        row.appendChild(left);
+        row.appendChild(right);
+        container.insertBefore(row, spacer);
+        currentLeft = [];
+        currentRight = [];
+    }
+
+    // Place each section according to its column assignment
+    for (const item of prefs.layoutList) {
+        const el = document.getElementById(item.id);
+        if (!el) continue;
+
+        if (item.col === 'wide') {
+            flushColumns();  // Flush any pending left/right sections first
+            el.classList.add('section-wide');
+            container.insertBefore(el, spacer);
+        } else if (item.col === 'left') {
+            currentLeft.push(el);
+        } else {
+            currentRight.push(el);
+        }
+    }
+    flushColumns();
+    // Always add an empty drop-target row at the end for drag-to-reorder
+    flushColumns(true);
+
+    // Apply hidden state — completely remove sections from view
+    for (const id of prefs.hidden) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    }
+
+    // Apply minimized state — collapse sections to just their header bar
+    for (const id of prefs.minimized) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('section-minimized');
+    }
+
+    // Reorder chart rows within the daily forecast section
+    applyChartOrder(prefs.chartOrder || DEFAULT_CHART_ORDER);
+
+    // Inject drag handle + width/minimize controls on each visible section
+    injectSectionControls();
+    renderHiddenSectionsBar();
+}
+
+/**
+ * Inject control buttons (drag handle, width toggle, minimize/hide) into each
+ * visible section. Replaces any existing controls to avoid duplicates.
+ * Controls behavior:
+ *   - Drag handle: enables pointer-based drag-to-reorder
+ *   - Width toggle: switches section between single-column and full-width
+ *   - Minimize button: first click minimizes (collapses), second click hides
+ *   - Clicking a minimized section body expands it back
+ */
+function injectSectionControls() {
+    for (const id of DEFAULT_SECTION_ORDER) {
+        const el = document.getElementById(id);
+        if (!el || el.style.display === 'none') continue;
+        el.setAttribute('data-section-name', SECTION_NAMES[id] || id);
+        // Remove old controls to prevent duplicates on re-render
+        const old = el.querySelector('.section-controls');
+        if (old) old.remove();
+
+        const isMin = el.classList.contains('section-minimized');
+        const isWide = el.classList.contains('section-wide');
+
+        const controls = document.createElement('div');
+        controls.className = 'section-controls';
+        controls.innerHTML = `
+            <span class="section-drag-handle" title="Drag to reorder">⠿</span>
+            <button class="section-width-btn" title="${isWide ? 'Single column' : 'Full width'}">${isWide ? '▣' : '◫'}</button>
+            <button class="section-min-btn" title="${isMin ? 'Remove section' : 'Minimize section'}">${isMin ? '✕' : '−'}</button>
+        `;
+        el.prepend(controls);
+
+        // Width toggle: cycle between wide and left-column
+        controls.querySelector('.section-width-btn').addEventListener('click', () => {
+            const p = loadSectionPrefs();
+            const item = p.layoutList.find(x => x.id === id);
+            if (!item) return;
+            if (item.col === 'wide') {
+                item.col = 'left';
+            } else {
+                item.col = 'wide';
+            }
+            saveSectionPrefs(p);
+            applySectionPreferences();
+        });
+
+        // Minimize/hide: two-step process.
+        // If already minimized, clicking hides it entirely.
+        // If not minimized, clicking minimizes (collapses) it.
+        controls.querySelector('.section-min-btn').addEventListener('click', () => {
+            const p = loadSectionPrefs();
+            if (el.classList.contains('section-minimized')) {
+                // Already minimized — hide it completely
+                el.style.display = 'none';
+                p.minimized = p.minimized.filter(x => x !== id);
+                if (!p.hidden.includes(id)) p.hidden.push(id);
+                saveSectionPrefs(p);
+                renderHiddenSectionsBar();
+            } else {
+                // Not minimized — collapse it
+                el.classList.add('section-minimized');
+                if (!p.minimized.includes(id)) p.minimized.push(id);
+                saveSectionPrefs(p);
+                controls.querySelector('.section-min-btn').textContent = '✕';
+                controls.querySelector('.section-min-btn').title = 'Remove section';
+            }
+        });
+
+        // Click anywhere on a minimized section (except controls) to expand it
+        el.addEventListener('click', (e) => {
+            if (!el.classList.contains('section-minimized')) return;
+            if (e.target.closest('.section-controls')) return;
+            const p = loadSectionPrefs();
+            el.classList.remove('section-minimized');
+            p.minimized = p.minimized.filter(x => x !== id);
+            saveSectionPrefs(p);
+            controls.querySelector('.section-min-btn').textContent = '−';
+            controls.querySelector('.section-min-btn').title = 'Minimize section';
+        });
+    }
+}
+
+/**
+ * Render the "Show [section]" buttons bar for any hidden sections.
+ * Appears just below the weather summary. Clicking a button restores
+ * the section to visible and re-applies all layout preferences.
+ */
+function renderHiddenSectionsBar() {
+    let bar = document.getElementById('hidden-sections-bar');
+    const prefs = loadSectionPrefs();
+
+    // No hidden sections — remove the bar if it exists
+    if (prefs.hidden.length === 0) {
+        if (bar) bar.remove();
+        return;
+    }
+
+    // Create bar element if it doesn't exist yet
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'hidden-sections-bar';
+        const summary = document.getElementById('weather-summary');
+        if (summary) summary.parentNode.insertBefore(bar, summary.nextSibling);
+    }
+
+    // Populate with one button per hidden section
+    bar.innerHTML = prefs.hidden.map(id =>
+        `<button class="show-section-btn" data-id="${id}">Show ${SECTION_NAMES[id] || id}</button>`
+    ).join(' ');
+
+    // Wire up click handlers to restore hidden sections
+    bar.querySelectorAll('.show-section-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const p = loadSectionPrefs();
+            p.hidden = p.hidden.filter(h => h !== id);
+            saveSectionPrefs(p);
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = '';
+                el.classList.remove('section-minimized');
+            }
+            applySectionPreferences();
+        });
+    });
+}
+
+// =============================================================================
+// SECTION: Drag-to-Reorder (Sections)
+// Implements pointer-event-based drag and drop for weather sections.
+// Sections can be dragged between left/right columns and reordered within
+// columns. Uses a placeholder element to show the drop target position.
+// =============================================================================
+
+/**
+ * Initialize drag-to-reorder functionality for weather sections.
+ * Uses event delegation on the weather-content container. Listens for
+ * pointerdown on .section-drag-handle elements to start a drag operation.
+ * During drag, the section follows the cursor and a placeholder marks
+ * the drop target. On drop, the new layout is persisted to localStorage.
+ */
+function initSectionDrag() {
+    const container = document.getElementById('weather-content');
+    if (!container) return;
+
+    let dragEl = null;        // The section element being dragged
+    let placeholder = null;   // Visual placeholder showing where the section will land
+    let offsetY = 0;          // Cursor offset from top of section at drag start
+    let offsetX = 0;          // Cursor offset from left of section at drag start
+    let dragActive = false;   // Whether a drag is currently in progress
+
+    // Pointerdown on a drag handle starts the drag
+    container.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.section-drag-handle');
+        if (!handle) return;
+
+        dragEl = handle.closest('section');
+        if (!dragEl || !DEFAULT_SECTION_ORDER.includes(dragEl.id)) return;
+
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+
+        // Calculate offset so the section doesn't jump when grabbed
+        const rect = dragEl.getBoundingClientRect();
+        offsetY = e.clientY - rect.top;
+        offsetX = e.clientX - rect.left;
+
+        // Insert placeholder where the section was
+        placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.style.height = rect.height + 'px';
+        dragEl.parentNode.insertBefore(placeholder, dragEl);
+
+        // Make the section follow the cursor with fixed positioning
+        dragEl.classList.add('section-dragging');
+        dragEl.style.position = 'fixed';
+        dragEl.style.top = (e.clientY - offsetY) + 'px';
+        dragEl.style.left = (e.clientX - offsetX) + 'px';
+        dragEl.style.width = rect.width + 'px';
+        dragEl.style.zIndex = '999';
+        dragActive = true;
+        document.body.classList.add('is-dragging');
+    });
+
+    // Pointermove updates the dragged section position and moves the placeholder
+    container.addEventListener('pointermove', (e) => {
+        if (!dragActive || !dragEl) return;
+        e.preventDefault();
+
+        // Move the dragged section to follow the cursor
+        dragEl.style.top = (e.clientY - offsetY) + 'px';
+        dragEl.style.left = (e.clientX - offsetX) + 'px';
+
+        // Find the nearest column to the cursor by measuring distance
+        const cols = [...container.querySelectorAll('.weather-col')];
+        let targetCol = null;
+        let minDist = Infinity;
+        for (const col of cols) {
+            const r = col.getBoundingClientRect();
+            // Distance: 0 if cursor is inside the column, otherwise Euclidean distance to nearest edge
+            const dx = e.clientX < r.left ? r.left - e.clientX : e.clientX > r.right ? e.clientX - r.right : 0;
+            const dy = e.clientY < r.top ? r.top - e.clientY : e.clientY > r.bottom ? e.clientY - r.bottom : 0;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDist) {
+                minDist = dist;
+                targetCol = col;
+            }
+        }
+
+        // Move placeholder to the closest column if within 200px range
+        if (targetCol && minDist < 200) {
+            if (placeholder.parentNode !== targetCol) targetCol.appendChild(placeholder);
+            // Position placeholder before the first sibling whose midpoint is below the cursor
+            const siblings = [...targetCol.querySelectorAll('section:not(.section-dragging)')];
+            let inserted = false;
+            for (const sib of siblings) {
+                const r = sib.getBoundingClientRect();
+                if (e.clientY < r.top + r.height / 2) {
+                    targetCol.insertBefore(placeholder, sib);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) targetCol.appendChild(placeholder);
+        }
+    });
+
+    /**
+     * End the drag operation: place the section where the placeholder is,
+     * clean up styles, and rebuild + persist the new layout order.
+     */
+    const endDrag = () => {
+        if (!dragActive || !dragEl) return;
+
+        // Place the dragged section at the placeholder's position
+        placeholder.parentNode.insertBefore(dragEl, placeholder);
+        placeholder.remove();
+
+        // Reset all drag-related inline styles
+        dragEl.classList.remove('section-dragging');
+        dragEl.style.position = '';
+        dragEl.style.top = '';
+        dragEl.style.left = '';
+        dragEl.style.width = '';
+        dragEl.style.zIndex = '';
+
+        // Rebuild layoutList from current DOM state by walking all containers
+        const prefs = loadSectionPrefs();
+        const newList = [];
+        for (const child of container.children) {
+            if (child.classList && child.classList.contains('columns-row')) {
+                const left = child.querySelector('.weather-col:first-child');
+                const right = child.querySelector('.weather-col:last-child');
+                const leftSections = left ? [...left.querySelectorAll('section')].map(s => s.id) : [];
+                const rightSections = right ? [...right.querySelectorAll('section')].map(s => s.id) : [];
+                // Interleave left and right sections to maintain relative order in the flat list
+                const maxLen = Math.max(leftSections.length, rightSections.length);
+                for (let i = 0; i < maxLen; i++) {
+                    if (i < leftSections.length) newList.push({ id: leftSections[i], col: 'left' });
+                    if (i < rightSections.length) newList.push({ id: rightSections[i], col: 'right' });
+                }
+            } else if (child.tagName === 'SECTION' && DEFAULT_SECTION_ORDER.includes(child.id)) {
+                // Wide section: directly in container, not inside a columns-row
+                newList.push({ id: child.id, col: 'wide' });
+            }
+        }
+        if (newList.length > 0) prefs.layoutList = newList;
+        saveSectionPrefs(prefs);
+
+        dragEl = null;
+        placeholder = null;
+        dragActive = false;
+        document.body.classList.remove('is-dragging');
+    };
+
+    container.addEventListener('pointerup', endDrag);
+    container.addEventListener('pointercancel', endDrag);
+}
+
+// =============================================================================
+// SECTION: Chart Order & Visibility
+// Manages the ordering and visibility of chart rows (temperature, atmospheric,
+// precipitation, wind) within the 10-day forecast section. Charts can be
+// reordered via drag and hidden/shown individually.
+// =============================================================================
+
+/**
+ * Apply chart ordering and visibility within the daily forecast scroll container.
+ * Reorders chart-row elements based on the provided order, hides charts listed
+ * in prefs.hiddenCharts, and sets up hide-button click handlers.
+ * Uses requestAnimationFrame to ensure the DOM is ready after renderDaily().
+ * @param {string[]} chartOrder - Array of chart IDs in desired display order
+ */
+function applyChartOrder(chartOrder) {
+    requestAnimationFrame(() => {
+        const scroll = document.querySelector('.forecast-scroll');
+        if (!scroll) return;
+        const prefs = loadSectionPrefs();
+        const footer = scroll.querySelector('.forecast-footer');
+
+        // Move each chart row before the footer in the specified order
+        for (const chartId of chartOrder) {
+            const row = scroll.querySelector(`[data-chart-id="${chartId}"]`);
+            if (row && footer) {
+                scroll.insertBefore(row, footer);
+                // Apply hidden state for charts the user has dismissed
+                if (prefs.hiddenCharts.includes(chartId)) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = '';
+                }
+            }
+        }
+
+        // Add click handlers for chart hide buttons (the X button on each chart row)
+        scroll.querySelectorAll('.chart-min-btn').forEach(btn => {
+            btn.onclick = () => {
+                const chartId = btn.dataset.chartId;
+                const p = loadSectionPrefs();
+                if (!p.hiddenCharts.includes(chartId)) p.hiddenCharts.push(chartId);
+                saveSectionPrefs(p);
+                const row = btn.closest('.chart-row');
+                if (row) row.style.display = 'none';
+                renderHiddenChartsBar();
+            };
+        });
+
+        renderHiddenChartsBar();
+    });
+}
+
+/** Human-readable names for chart rows, used in "Show [chart]" restore buttons */
+const CHART_NAMES = {
+    'chart-temp': 'Temperature',
+    'chart-atmos': 'Cloud/Humidity/Pressure',
+    'chart-precip': 'Precipitation',
+    'chart-wind': 'Wind',
+};
+
+/**
+ * Render the "Show [chart]" buttons for any hidden chart rows.
+ * Inserted just below the h2 of the daily-section. Clicking a button
+ * restores the chart to visible and updates preferences.
+ */
+function renderHiddenChartsBar() {
+    const section = document.getElementById('daily-section');
+    if (!section) return;
+    let bar = document.getElementById('hidden-charts-bar');
+    const prefs = loadSectionPrefs();
+
+    // No hidden charts — remove the bar
+    if (prefs.hiddenCharts.length === 0) {
+        if (bar) bar.remove();
+        return;
+    }
+
+    // Create bar if it doesn't exist
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'hidden-charts-bar';
+        // Insert after the h2 heading
+        const h2 = section.querySelector('h2');
+        if (h2) h2.parentNode.insertBefore(bar, h2.nextSibling);
+        else section.prepend(bar);
+    }
+
+    // Populate with restore buttons
+    bar.innerHTML = prefs.hiddenCharts.map(id =>
+        `<button class="show-section-btn" data-id="${id}">Show ${CHART_NAMES[id] || id}</button>`
+    ).join(' ');
+
+    // Wire up click handlers to restore hidden charts
+    bar.querySelectorAll('.show-section-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const p = loadSectionPrefs();
+            p.hiddenCharts = p.hiddenCharts.filter(h => h !== id);
+            saveSectionPrefs(p);
+            const row = document.querySelector(`[data-chart-id="${id}"]`);
+            if (row) row.style.display = '';
+            renderHiddenChartsBar();
+        });
+    });
+}
+
+// =============================================================================
+// SECTION: Drag-to-Reorder (Charts)
+// Implements pointer-event-based drag and drop for chart rows within the
+// 10-day forecast. Similar to section drag but operates on .chart-row elements
+// inside the .forecast-scroll container.
+// =============================================================================
+
+/**
+ * Initialize drag-to-reorder for chart rows within the daily forecast.
+ * Uses global event delegation (on document) since the chart rows are
+ * rendered dynamically. Drag handles are .chart-drag-handle elements.
+ */
+function initChartDrag() {
+    document.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.chart-drag-handle');
+        if (!handle) return;
+        const chartRow = handle.closest('.chart-row');
+        const scroll = chartRow ? chartRow.closest('.forecast-scroll') : null;
+        if (!chartRow || !scroll) return;
+
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+
+        const rect = chartRow.getBoundingClientRect();
+        const scrollRect = scroll.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+
+        // Create placeholder at the chart row's original position
+        const placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.style.height = rect.height + 'px';
+        scroll.insertBefore(placeholder, chartRow);
+
+        // Float the chart row with fixed positioning
+        chartRow.classList.add('section-dragging');
+        chartRow.style.position = 'fixed';
+        chartRow.style.top = (e.clientY - offsetY) + 'px';
+        chartRow.style.left = scrollRect.left + 'px';
+        chartRow.style.width = scrollRect.width + 'px';
+        chartRow.style.zIndex = '999';
+
+        /** Move handler: reposition dragged chart and update placeholder position */
+        const onMove = (e2) => {
+            e2.preventDefault();
+            chartRow.style.top = (e2.clientY - offsetY) + 'px';
+
+            // Find the correct insertion point among sibling chart rows
+            const rows = [...scroll.querySelectorAll('.chart-row:not(.section-dragging)')];
+            for (const row of rows) {
+                const r = row.getBoundingClientRect();
+                if (e2.clientY < r.top + r.height / 2) {
+                    scroll.insertBefore(placeholder, row);
+                    return;
+                }
+            }
+            // If past all rows, place before footer
+            const footer = scroll.querySelector('.forecast-footer');
+            if (footer) scroll.insertBefore(placeholder, footer);
+        };
+
+        /** Drop handler: finalize position and persist new chart order */
+        const onUp = () => {
+            // Place chart row at placeholder position
+            scroll.insertBefore(chartRow, placeholder);
+            placeholder.remove();
+
+            // Reset inline styles
+            chartRow.classList.remove('section-dragging');
+            chartRow.style.position = '';
+            chartRow.style.top = '';
+            chartRow.style.left = '';
+            chartRow.style.width = '';
+            chartRow.style.zIndex = '';
+
+            // Save new chart order by reading DOM order
+            const newOrder = [...scroll.querySelectorAll('.chart-row')]
+                .map(r => r.dataset.chartId)
+                .filter(Boolean);
+            const prefs = loadSectionPrefs();
+            prefs.chartOrder = newOrder;
+            saveSectionPrefs(prefs);
+
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+        };
+
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+    });
+}
+
+// =============================================================================
+// SECTION: Constants
+// WMO weather code descriptions and icons. These codes are returned by the
+// Open-Meteo API and map to human-readable weather conditions with emoji icons.
+// =============================================================================
+
+/**
+ * WMO weather interpretation codes mapped to descriptive text and emoji icons.
+ * Codes are defined by the World Meteorological Organization and used by Open-Meteo.
+ * @see https://open-meteo.com/en/docs (WMO Weather interpretation codes)
+ */
+const WEATHER_DESCRIPTIONS = {
+    0: { text: 'Clear sky', icon: '☀️' },
+    1: { text: 'Mainly clear', icon: '🌤️' },
+    2: { text: 'Partly cloudy', icon: '⛅' },
+    3: { text: 'Overcast', icon: '☁️' },
+    45: { text: 'Foggy', icon: '🌫️' },
+    48: { text: 'Depositing rime fog', icon: '🌫️' },
+    51: { text: 'Light drizzle', icon: '🌦️' },
+    53: { text: 'Moderate drizzle', icon: '🌦️' },
+    55: { text: 'Dense drizzle', icon: '🌦️' },
+    61: { text: 'Slight rain', icon: '🌧️' },
+    63: { text: 'Moderate rain', icon: '🌧️' },
+    65: { text: 'Heavy rain', icon: '🌧️' },
+    71: { text: 'Slight snow', icon: '🌨️' },
+    73: { text: 'Moderate snow', icon: '🌨️' },
+    75: { text: 'Heavy snow', icon: '🌨️' },
+    77: { text: 'Snow grains', icon: '🌨️' },
+    80: { text: 'Slight rain showers', icon: '🌦️' },
+    81: { text: 'Moderate rain showers', icon: '🌦️' },
+    82: { text: 'Violent rain showers', icon: '🌦️' },
+    85: { text: 'Slight snow showers', icon: '🌨️' },
+    86: { text: 'Heavy snow showers', icon: '🌨️' },
+    95: { text: 'Thunderstorm', icon: '⛈️' },
+    96: { text: 'Thunderstorm with slight hail', icon: '⛈️' },
+    99: { text: 'Thunderstorm with heavy hail', icon: '⛈️' },
+};
+
+// =============================================================================
+// SECTION: DOM References
+// Cached references to frequently-used DOM elements.
+// =============================================================================
+
+const homeView = document.getElementById('home-view');
+const weatherView = document.getElementById('weather-view');
+const searchForm = document.getElementById('search-form');
+const searchInput = document.getElementById('search-input');
+const searchError = document.getElementById('search-error');
+const locationName = document.getElementById('location-name');
+const backBtn = document.getElementById('back-btn');
+
+// =============================================================================
+// SECTION: Utility Functions
+// General-purpose helpers for weather codes, wind direction, map tile math,
+// moon phase calculation, and temperature-based color coding.
+// =============================================================================
+
+/**
+ * Look up the descriptive text and emoji icon for a WMO weather code.
+ * @param {number} code - WMO weather interpretation code
+ * @returns {{text: string, icon: string}} Description and icon, or 'Unknown' with '?' icon
+ */
+function weatherInfo(code) {
+    return WEATHER_DESCRIPTIONS[code] || { text: 'Unknown', icon: '❓' };
+}
+
+/**
+ * Convert a wind direction in degrees to a compass direction abbreviation.
+ * Divides the compass into 8 sectors of 45 degrees each.
+ * @param {number} degrees - Wind direction in degrees (0 = North, 90 = East)
+ * @returns {string} Compass direction (e.g., 'N', 'NE', 'SW')
+ */
+function windDirection(degrees) {
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return dirs[Math.round(degrees / 45) % 8];
+}
+
+/**
+ * Convert longitude to a map tile X coordinate at a given zoom level.
+ * Used for generating tile URLs for CartoDB and RainViewer maps.
+ * @param {number} lon - Longitude in degrees
+ * @param {number} zoom - Map zoom level
+ * @returns {number} Tile X coordinate (integer)
+ */
+function lonToTile(lon, zoom) {
+    return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
+}
+
+/**
+ * Convert latitude to a map tile Y coordinate at a given zoom level.
+ * Uses the Mercator projection formula for tile mapping.
+ * @param {number} lat - Latitude in degrees
+ * @param {number} zoom - Map zoom level
+ * @returns {number} Tile Y coordinate (integer)
+ */
+function latToTile(lat, zoom) {
+    return Math.floor(
+        (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) /
+            2 *
+            Math.pow(2, zoom)
+    );
+}
+
+/**
+ * Calculate the current moon phase name and emoji icon for a given date.
+ * Uses the synodic month (29.53 days) relative to a known new moon
+ * (January 6, 2000 at 18:14 UTC) to determine phase fraction.
+ * @param {Date} date - The date to calculate moon phase for
+ * @returns {{name: string, icon: string}} Phase name and moon emoji
+ */
+function getMoonPhase(date) {
+    // Reference new moon: January 6, 2000 at 18:14 UTC
+    const knownNew = new Date(2000, 0, 6, 18, 14);
+    const synodicMonth = 29.53058867; // Average lunar month in days
+    const diff = (date - knownNew) / (1000 * 60 * 60 * 24);
+    const phase = ((diff % synodicMonth) + synodicMonth) % synodicMonth;
+    const phaseFraction = phase / synodicMonth; // 0.0 = new moon, 0.5 = full moon
+
+    let name, icon;
+    if (phaseFraction < 0.0625) { name = 'New Moon'; icon = '🌑'; }
+    else if (phaseFraction < 0.1875) { name = 'Waxing Crescent'; icon = '🌒'; }
+    else if (phaseFraction < 0.3125) { name = 'First Quarter'; icon = '🌓'; }
+    else if (phaseFraction < 0.4375) { name = 'Waxing Gibbous'; icon = '🌔'; }
+    else if (phaseFraction < 0.5625) { name = 'Full Moon'; icon = '🌕'; }
+    else if (phaseFraction < 0.6875) { name = 'Waning Gibbous'; icon = '🌖'; }
+    else if (phaseFraction < 0.8125) { name = 'Last Quarter'; icon = '🌗'; }
+    else if (phaseFraction < 0.9375) { name = 'Waning Crescent'; icon = '🌘'; }
+    else { name = 'New Moon'; icon = '🌑'; }
+
+    return { name, icon };
+}
+
+/**
+ * Minimum temperature range (in Fahrenheit) required to show temperature-based
+ * background colors on forecast day columns. Prevents meaningless coloring when
+ * all days have nearly the same temperature.
+ */
+const TEMP_COLOR_THRESHOLD = 5;
+
+/**
+ * Compute a background color for a forecast day based on its average temperature
+ * relative to the overall range. Warmer days get redder, cooler days get bluer.
+ * Adapts to dark mode (darker, more subtle colors) vs light mode.
+ * @param {number} avg - The day's average temperature
+ * @param {number} minAvg - Minimum average temperature across all forecast days
+ * @param {number} avgRange - Range of average temperatures (max - min)
+ * @returns {string} CSS color string ('transparent' if range is too small, otherwise 'rgb(...)')
+ */
+function tempBackground(avg, minAvg, avgRange) {
+    if (avgRange < TEMP_COLOR_THRESHOLD) return 'transparent';
+    const t = (avg - minAvg) / avgRange; // Normalized 0-1 (cold to warm)
+    if (isDarkMode()) {
+        // Dark mode: subtle warm/cool tints
+        const r = Math.round(20 + t * 40);
+        const g = Math.round(50 - t * 15);
+        const b = Math.round(50 - t * 35);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+    // Light mode: blue (cool) to warm orange-ish
+    const r = Math.round(214 + t * 39);
+    const g = Math.round(228 - t * 14);
+    const b = Math.round(253 - t * 39);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * Recompute and apply temperature-based background colors to all .forecast-day
+ * elements. Called when the theme changes (dark mode toggle) since colors
+ * differ between themes. Uses the globally stored _forecastAvgTemps array.
+ */
+function updateDayBackgrounds() {
+    const avgTemps = window._forecastAvgTemps;
+    if (!avgTemps) return;
+    const minAvg = Math.min(...avgTemps);
+    const avgRange = (Math.max(...avgTemps) - minAvg) || 1;
+    document.querySelectorAll('.forecast-day').forEach((el, i) => {
+        if (i < avgTemps.length) {
+            el.style.background = tempBackground(avgTemps[i], minAvg, avgRange);
+        }
+    });
+}
+
+// =============================================================================
+// SECTION: API Functions - Geocoding
+// Converts user search input (city name, "city, state", or US zip code) into
+// geographic coordinates. Uses Open-Meteo Geocoding API for city names and
+// Zippopotam.us for US zip codes. Supports state abbreviation filtering and
+// a multi-result location picker.
+// =============================================================================
+
+/**
+ * Fetch geocoding results from Open-Meteo for a place name.
+ * Returns up to 10 matching locations.
+ * @param {string} name - Place name to search for
+ * @returns {Promise<Object>} Raw API response with results array
+ * @throws {Error} If the HTTP request fails
+ */
+async function geocodeFetch(name) {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=10&language=en&format=json`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Geocoding request failed');
+    return res.json();
+}
+
+/**
+ * Geocode a US 5-digit zip code using Zippopotam.us API.
+ * @param {string} zip - 5-digit US zip code
+ * @returns {Promise<Object>} Location object with name, region, country, lat, lon
+ * @throws {Error} If the zip code is not found
+ */
+async function geocodeZip(zip) {
+    const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+    if (!res.ok) throw new Error('Zip code not found. Try a city name instead.');
+    const data = await res.json();
+    const place = data.places[0];
+    return {
+        name: place['place name'],
+        region: place['state abbreviation'],
+        country: 'United States',
+        lat: parseFloat(place.latitude),
+        lon: parseFloat(place.longitude),
+    };
+}
+
+/**
+ * Main geocoding function. Parses the user's search query and resolves it to
+ * a single location with coordinates. Supports multiple input formats:
+ *   - "78258" (US zip code)
+ *   - "Austin, TX" or "Austin,TX" (city with comma-separated state)
+ *   - "Austin TX" (city with space-separated state abbreviation)
+ *   - "Austin" (city name only, may show picker if ambiguous)
+ *
+ * If multiple results match and no state filter was provided, shows an
+ * interactive location picker to let the user disambiguate.
+ *
+ * @param {string} query - User's search input
+ * @returns {Promise<Object>} Location object {name, region, country, lat, lon}
+ * @throws {Error} If no location is found
+ */
+async function geocode(query) {
+    // Check if input is a US zip code (exactly 5 digits)
+    const zipMatch = query.trim().match(/^(\d{5})$/);
+    if (zipMatch) {
+        return geocodeZip(zipMatch[1]);
+    }
+
+    // Parse city and region filter from input
+    // Supports: "Austin, TX", "Austin,TX", "Austin TX", "Austin"
+    let searchName, filterRegion;
+
+    if (query.includes(',')) {
+        // Comma-separated: "Austin, TX" -> search "Austin", filter "TX"
+        const parts = query.split(',').map(s => s.trim());
+        searchName = parts[0];
+        filterRegion = parts[1] || '';
+    } else {
+        // Try splitting on last space: "Austin TX" -> search "Austin", filter "TX"
+        const words = query.trim().split(/\s+/);
+        const lastWord = words[words.length - 1];
+        // If last word looks like a state abbreviation (2-3 letters) or is in the STATE_ABBRS map
+        if (words.length >= 2 && (lastWord.length <= 3 || STATE_ABBRS[lastWord.toLowerCase()])) {
+            searchName = words.slice(0, -1).join(' ');
+            filterRegion = lastWord;
+        } else {
+            searchName = query;
+            filterRegion = '';
+        }
+    }
+
+    // Try searching with the parsed city name
+    let data = await geocodeFetch(searchName);
+
+    // If no results and we had split on space, retry with the full query as-is
+    // (in case "New York" was split into search="New", filter="York")
+    if ((!data.results || data.results.length === 0) && filterRegion) {
+        data = await geocodeFetch(query);
+        filterRegion = ''; // Don't filter since we searched the full string
+    }
+
+    if (!data.results || data.results.length === 0) {
+        throw new Error('Location not found. Try a different city or zip code.');
+    }
+
+    // Normalize results into a consistent format
+    let results = data.results.map(r => ({
+        name: r.name,
+        region: r.admin1 || '',
+        country: r.country || '',
+        lat: r.latitude,
+        lon: r.longitude,
+    }));
+
+    // Filter by region/state if the user provided one
+    if (filterRegion) {
+        const filter = filterRegion.toLowerCase();
+        const filtered = results.filter(r => {
+            const region = r.region.toLowerCase();
+            const country = r.country.toLowerCase();
+            return region.startsWith(filter) || region.includes(filter)
+                || country.startsWith(filter) || country.includes(filter)
+                || matchesStateAbbr(filter, region);
+        });
+        if (filtered.length > 0) results = filtered;
+    }
+
+    // If only one result or user already filtered, return it directly
+    if (results.length === 1 || filterRegion) {
+        return results[0];
+    }
+
+    // Multiple ambiguous results — show interactive picker
+    return showLocationPicker(results);
+}
+
+/**
+ * US state abbreviation to full name mapping (lowercase).
+ * Used to match input like "TX" against geocoding results that return "Texas".
+ */
+const STATE_ABBRS = {
+    al:'alabama',ak:'alaska',az:'arizona',ar:'arkansas',ca:'california',
+    co:'colorado',ct:'connecticut',de:'delaware',fl:'florida',ga:'georgia',
+    hi:'hawaii',id:'idaho',il:'illinois',in:'indiana',ia:'iowa',ks:'kansas',
+    ky:'kentucky',la:'louisiana',me:'maine',md:'maryland',ma:'massachusetts',
+    mi:'michigan',mn:'minnesota',ms:'mississippi',mo:'missouri',mt:'montana',
+    ne:'nebraska',nv:'nevada',nh:'new hampshire',nj:'new jersey',nm:'new mexico',
+    ny:'new york',nc:'north carolina',nd:'north dakota',oh:'ohio',ok:'oklahoma',
+    or:'oregon',pa:'pennsylvania',ri:'rhode island',sc:'south carolina',
+    sd:'south dakota',tn:'tennessee',tx:'texas',ut:'utah',vt:'vermont',
+    va:'virginia',wa:'washington',wv:'west virginia',wi:'wisconsin',wy:'wyoming',
+};
+
+/**
+ * Check if a state abbreviation matches a full state/region name.
+ * Expands the abbreviation using STATE_ABBRS and checks for inclusion.
+ * @param {string} abbr - State abbreviation (e.g., "tx")
+ * @param {string} fullName - Full region name from geocoding (e.g., "Texas")
+ * @returns {boolean} True if the abbreviation matches
+ */
+function matchesStateAbbr(abbr, fullName) {
+    const expanded = STATE_ABBRS[abbr.toLowerCase()];
+    return expanded && fullName.toLowerCase().includes(expanded);
+}
+
+/**
+ * Show an interactive location picker when geocoding returns multiple results.
+ * Displays a list of clickable buttons in the search error area, each showing
+ * "City, Region, Country". Returns a Promise that resolves with the user's
+ * chosen location.
+ * @param {Object[]} results - Array of location objects to choose from
+ * @returns {Promise<Object>} The selected location {name, region, country, lat, lon}
+ */
+function showLocationPicker(results) {
+    // Reset search button while picker is shown
+    const btn = document.querySelector('#search-form button');
+    if (btn) { btn.disabled = false; btn.textContent = 'Search'; }
+
+    return new Promise((resolve) => {
+        const container = document.getElementById('search-error');
+        container.hidden = false;
+        container.style.color = '#1a1a1a';
+
+        // Build picker HTML with styled buttons
+        let html = '<div style="margin-top:0.5rem;">Did you mean:</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:0.25rem;margin-top:0.5rem;">';
+        results.forEach((r, i) => {
+            html += `<button class="location-pick" data-idx="${i}" style="
+                text-align:left;padding:0.5rem 0.75rem;background:var(--card-bg);color:var(--text);
+                border:1px solid var(--border);border-radius:6px;cursor:pointer;
+                font-size:0.9rem;transition:background 0.15s;
+            ">${r.name}, ${r.region}, ${r.country}</button>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Listen for button clicks and resolve with the chosen location
+        container.addEventListener('click', function handler(e) {
+            const btn = e.target.closest('.location-pick');
+            if (!btn) return;
+            container.removeEventListener('click', handler);
+            container.hidden = true;
+            container.innerHTML = '';
+            container.style.color = '';
+            resolve(results[parseInt(btn.dataset.idx)]);
+        });
+    });
+}
+
+// =============================================================================
+// SECTION: API Functions - Weather Data
+// Fetches weather data from Open-Meteo, air quality data (including pollen),
+// and NWS weather alerts. All API calls use the user's current unit preferences.
+// =============================================================================
+
+/**
+ * Fetch comprehensive weather data from the Open-Meteo forecast API.
+ * Requests current conditions, hourly forecast (all hours available), and
+ * daily forecast (10 days). Units are passed from the global `units` state.
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {Promise<Object>} Open-Meteo forecast response with current, hourly, daily objects
+ * @throws {Error} If the HTTP request fails
+ */
+async function fetchOpenMeteo(lat, lon) {
+    const params = new URLSearchParams({
+        latitude: lat,
+        longitude: lon,
+        current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index',
+        hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,cloud_cover,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure',
+        daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset',
+        temperature_unit: units.temp,
+        wind_speed_unit: units.wind,
+        precipitation_unit: units.precip,
+        pressure_unit: units.pressure,
+        timezone: 'auto',
+        forecast_days: 10,
+    });
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+    if (!res.ok) throw new Error('Weather data request failed');
+    return res.json();
+}
+
+/**
+ * Fetch air quality data from Open-Meteo's Air Quality API.
+ * Returns current US AQI and pollen counts for multiple plant types.
+ * Pollen data is primarily available for European locations.
+ * Silently returns null on any error (non-critical data).
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {Promise<Object|null>} Current air quality data or null on failure
+ */
+async function fetchAirQuality(lat, lon) {
+    try {
+        const params = new URLSearchParams({
+            latitude: lat,
+            longitude: lon,
+            current: 'us_aqi,grass_pollen,birch_pollen,ragweed_pollen,alder_pollen,olive_pollen,mugwort_pollen',
+        });
+        const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
+        if (!res.ok) return null;
+        return (await res.json()).current;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Convert a US AQI number to a human-readable label and color.
+ * Uses EPA breakpoints: Good (0-50), Moderate (51-100), Unhealthy for
+ * Sensitive Groups (101-150), Unhealthy (151-200), Very Unhealthy (201-300),
+ * Hazardous (301+).
+ * @param {number} aqi - US Air Quality Index value
+ * @returns {{text: string, color: string}} Label text and CSS color
+ */
+function aqiLabel(aqi) {
+    if (aqi <= 50) return { text: 'Good', color: '#16a34a' };
+    if (aqi <= 100) return { text: 'Moderate', color: '#ca8a04' };
+    if (aqi <= 150) return { text: 'Unhealthy (Sensitive)', color: '#ea580c' };
+    if (aqi <= 200) return { text: 'Unhealthy', color: '#dc2626' };
+    if (aqi <= 300) return { text: 'Very Unhealthy', color: '#7c3aed' };
+    return { text: 'Hazardous', color: '#7f1d1d' };
+}
+
+/**
+ * Extract and format pollen data from the Open-Meteo air quality response.
+ * Returns an array of pollen types with their level (Low/Moderate/High/Very High)
+ * and associated color. Only includes pollen types that have non-null values
+ * (primarily available for European locations).
+ * @param {Object|null} aq - Air quality data from fetchAirQuality()
+ * @returns {Array|null} Array of {name, level, color, value} objects, or null if no data
+ */
+function pollenSummary(aq) {
+    if (!aq) return null;
+    const types = [
+        { name: 'Grass', val: aq.grass_pollen },
+        { name: 'Birch', val: aq.birch_pollen },
+        { name: 'Ragweed', val: aq.ragweed_pollen },
+        { name: 'Alder', val: aq.alder_pollen },
+        { name: 'Olive', val: aq.olive_pollen },
+        { name: 'Mugwort', val: aq.mugwort_pollen },
+    ].filter(t => t.val !== null && t.val !== undefined);
+    if (types.length === 0) return null;
+
+    /**
+     * Classify a pollen count into a severity level.
+     * @param {number} v - Pollen count (grains/m3)
+     * @returns {string} Level string
+     */
+    function level(v) {
+        if (v <= 10) return 'Low';
+        if (v <= 50) return 'Moderate';
+        if (v <= 100) return 'High';
+        return 'Very High';
+    }
+
+    /**
+     * Get the color associated with a pollen severity level.
+     * @param {number} v - Pollen count (grains/m3)
+     * @returns {string} CSS color hex string
+     */
+    function levelColor(v) {
+        if (v <= 10) return '#16a34a';
+        if (v <= 50) return '#ca8a04';
+        if (v <= 100) return '#ea580c';
+        return '#dc2626';
+    }
+
+    return types.map(t => ({
+        name: t.name,
+        level: level(t.val),
+        color: levelColor(t.val),
+        value: Math.round(t.val),
+    }));
+}
+
+/**
+ * Fetch active weather alerts from the US National Weather Service API.
+ * Only returns alerts for US locations. Silently returns empty array on error.
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {Promise<Array>} Array of GeoJSON alert features, or empty array
+ */
+async function fetchAlerts(lat, lon) {
+    try {
+        const res = await fetch(
+            `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
+            { headers: { 'User-Agent': 'NoAdsWeather (noadsweather.com)' } }
+        );
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.features || [];
+    } catch {
+        return [];
+    }
+}
+
+// =============================================================================
+// SECTION: Render Functions
+// Functions that generate HTML and populate the DOM for each weather section.
+// =============================================================================
+
+/**
+ * Generate a natural-language weather summary sentence.
+ * Combines current temperature, conditions, precipitation outlook, and
+ * tomorrow's forecast into 1-2 readable sentences.
+ *
+ * Logic:
+ *   - Opening describes temp category (freezing/cold/cool/warm/hot) + feels-like delta
+ *   - Appends current condition (raining/snowing/clear/cloudy)
+ *   - If rain expected within 24h, mentions timing
+ *   - Follow-up mentions today's high and tomorrow's notable changes
+ *
+ * @param {Object} current - Open-Meteo current weather data
+ * @param {Object} hourly - Open-Meteo hourly forecast data
+ * @param {Object} daily - Open-Meteo daily forecast data
+ * @returns {string} Human-readable weather summary sentence
+ */
+function generateSummary(current, hourly, daily) {
+    const now = new Date();
+    const currentTemp = Math.round(current.temperature_2m);
+    const feelsLike = Math.round(current.apparent_temperature);
+    const info = weatherInfo(current.weather_code);
+
+    // Find next rain window in the next 24 hours by scanning precipitation probability
+    const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+    let rainStartHour = null;   // When rain is expected to start
+    let rainEndHour = null;     // When rain is expected to stop
+    let currentlyRaining = current.weather_code >= 51 && current.weather_code <= 99;
+
+    if (startIdx !== -1) {
+        for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
+            const prob = hourly.precipitation_probability[i];
+            if (!rainStartHour && prob >= 40) {
+                rainStartHour = new Date(hourly.time[i]);
+            }
+            if (rainStartHour && !rainEndHour && prob < 30) {
+                rainEndHour = new Date(hourly.time[i]);
+            }
+        }
+    }
+
+    // Today's and tomorrow's forecast data
+    const todayHigh = Math.round(daily.temperature_2m_max[0]);
+    const todayLow = Math.round(daily.temperature_2m_min[0]);
+    const todayPrecip = daily.precipitation_sum[0];
+
+    const tomorrowInfo = daily.time.length > 1 ? weatherInfo(daily.weather_code[1]) : null;
+    const tomorrowHigh = daily.time.length > 1 ? Math.round(daily.temperature_2m_max[1]) : null;
+    const tomorrowPrecip = daily.time.length > 1 ? daily.precipitation_sum[1] : 0;
+    const tomorrowCode = daily.time.length > 1 ? daily.weather_code[1] : 0;
+
+    // Temperature category thresholds — adapt to the current unit system
+    const freezing = isImperial() ? 32 : 0;
+    const cold = isImperial() ? 50 : 10;
+    const cool = isImperial() ? 65 : 18;
+    const warm = isImperial() ? 80 : 27;
+    const hot = isImperial() ? 95 : 35;
+
+    // Build opening sentence with temperature category
+    let opening;
+    if (currentTemp <= freezing) opening = `It's freezing at ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= cold) opening = `It's cold at ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= cool) opening = `It's cool at ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= warm) opening = `It's ${currentTemp}${tempUnit()}`;
+    else if (currentTemp <= hot) opening = `It's warm at ${currentTemp}${tempUnit()}`;
+    else opening = `It's hot at ${currentTemp}${tempUnit()}`;
+
+    // Add feels-like if significantly different from actual temp (5+ degree delta)
+    if (Math.abs(feelsLike - currentTemp) >= 5) {
+        opening += ` (feels like ${feelsLike}${tempUnit()})`;
+    }
+
+    // Helper: check if a weather code represents snow
+    const isSnow = (code) => code >= 71 && code <= 77 || code === 85 || code === 86;
+
+    // Append condition description
+    if (currentlyRaining) {
+        const code = current.weather_code;
+        if (code >= 95) opening += ' with thunderstorms';
+        else if (isSnow(code)) opening += ' and snowing';
+        else opening += ' and raining';
+        if (todayPrecip > 0) opening += ` (${fmtPrecip(todayPrecip)} expected today)`;
+        if (rainEndHour) opening += `, clearing around ${fmtHour(rainEndHour)}`;
+    } else if (rainStartHour) {
+        const hoursUntil = (rainStartHour - now) / (1000 * 60 * 60);
+        if (hoursUntil <= 1) opening += ' with rain expected very soon';
+        else opening += ` with rain likely around ${fmtHour(rainStartHour)}`;
+    } else {
+        // No rain — describe sky condition
+        if (info.text.toLowerCase().includes('clear') || info.text.toLowerCase().includes('sunny')) {
+            opening += ' with clear skies';
+        } else if (info.text.toLowerCase().includes('cloud') || info.text.toLowerCase().includes('overcast')) {
+            opening += ' and cloudy';
+        }
+    }
+
+    // Build follow-up sentences about today's high and tomorrow's outlook
+    let follow = [];
+    follow.push(`High of ${todayHigh}${tempUnit()} today`);
+
+    if (tomorrowInfo && tomorrowHigh !== null) {
+        const tomorrowRain = tomorrowCode >= 51 && tomorrowCode <= 99;
+        const tomorrowSnow = isSnow(tomorrowCode);
+        if (tomorrowSnow && tomorrowPrecip > 0) {
+            follow.push(`Snow expected tomorrow (${fmtPrecip(tomorrowPrecip)})`);
+        } else if (tomorrowRain && tomorrowPrecip > 0) {
+            follow.push(`Rain expected tomorrow (${fmtPrecip(tomorrowPrecip)})`);
+        } else if (tomorrowRain) {
+            follow.push(`Rain expected tomorrow`);
+        } else if (tomorrowHigh - todayHigh >= 8) {
+            follow.push(`warming up to ${tomorrowHigh}${tempUnit()} tomorrow`);
+        } else if (todayHigh - tomorrowHigh >= 8) {
+            follow.push(`cooling to ${tomorrowHigh}${tempUnit()} tomorrow`);
+        }
+    }
+
+    return opening + '. ' + follow.join('. ') + '.';
+}
+
+/**
+ * Format a Date's hour into a short label respecting the user's 12h/24h preference.
+ * @param {Date} date - The date to extract and format the hour from
+ * @returns {string} Formatted hour (e.g., "3pm", "15:00")
+ */
+function fmtHour(date) {
+    if (units.time24h) {
+        return date.getHours().toString().padStart(2, '0') + ':00';
+    }
+    const h = date.getHours();
+    if (h === 0) return '12am';
+    if (h < 12) return h + 'am';
+    if (h === 12) return '12pm';
+    return (h - 12) + 'pm';
+}
+
+/**
+ * Render the "Current Conditions" section with temperature, weather icon,
+ * feels-like, humidity, dew point, wind, gusts, air quality index, and UV index.
+ * @param {Object} current - Open-Meteo current weather data
+ * @param {Object|null} airQuality - Air quality data from fetchAirQuality()
+ */
+function renderCurrent(current, airQuality) {
+    const info = weatherInfo(current.weather_code);
+    const section = document.getElementById('current-section');
+    const uvVal = Math.round(current.uv_index);
+    const aqi = airQuality ? airQuality.us_aqi : null;
+    const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
+
+    section.innerHTML = `
+        <h2>Current Conditions</h2>
+        <div class="current-main">
+            <div class="current-icon-block">
+                <div class="icon">${info.icon}</div>
+                <div class="condition">${info.text}</div>
+            </div>
+            <div class="current-temp-block">
+                <div class="temp">${Math.round(current.temperature_2m)}${tempUnit()}</div>
+                <div class="feels-like">Feels like ${Math.round(current.apparent_temperature)}${tempUnit()}</div>
+            </div>
+        </div>
+        <div class="current-details-grid">
+            <div class="detail-item">
+                <span class="detail-label">Humidity</span>
+                <span class="detail-value">${current.relative_humidity_2m}%</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Dew Point</span>
+                <span class="detail-value">${Math.round(current.dew_point_2m)}${tempUnit()}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Wind</span>
+                <span class="detail-value">${Math.round(current.wind_speed_10m)} ${windUnit()} ${windDirection(current.wind_direction_10m)}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Gusts</span>
+                <span class="detail-value">${Math.round(current.wind_gusts_10m)} ${windUnit()}</span>
+            </div>
+            ${aqiInfo ? `
+            <div class="detail-item">
+                <span class="detail-label">Air Quality</span>
+                <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
+            </div>` : ''}
+            <div class="detail-item">
+                <span class="detail-label">UV Index</span>
+                <span class="detail-value">${uvVal} ${uvVal <= 2 ? '(Low)' : uvVal <= 5 ? '(Moderate)' : uvVal <= 7 ? '(High)' : uvVal <= 10 ? '(Very High)' : '(Extreme)'}</span>
+            </div>
+        </div>
+    `;
+}
+
+// =============================================================================
+// SECTION: Pollen Data
+// Handles pollen display using two data sources:
+//   1. Open-Meteo (free, European locations) - shown inline automatically
+//   2. Google Pollen API via proxy (non-European) - loaded on demand or from cache
+// =============================================================================
+
+/** Base URL for the Google Pollen API proxy (Cloud Run function) */
+const POLLEN_PROXY_URL = 'https://pollen-proxy-15838356607.us-central1.run.app';
+
+/**
+ * Render the pollen/details section. Uses Open-Meteo pollen data for European
+ * locations (shown automatically), or shows a "See pollen data" button for
+ * non-European locations that loads from the Google Pollen API proxy.
+ * Checks localStorage cache (keyed by lat/lon/date) to auto-show cached data.
+ * @param {Object|null} airQuality - Air quality data from fetchAirQuality()
+ * @param {number} lat - Latitude (used for Google Pollen API fallback)
+ * @param {number} lon - Longitude (used for Google Pollen API fallback)
+ */
+function renderPollen(airQuality, lat, lon) {
+    const section = document.getElementById('details-section');
+    const openMeteoPollen = pollenSummary(airQuality);
+    const hasFreePollen = openMeteoPollen && openMeteoPollen.length > 0;
+
+    if (hasFreePollen) {
+        // European locations — show Open-Meteo pollen data directly
+        section.innerHTML = `
+            <h2>Pollen</h2>
+            <div class="pollen-scroll">
+                ${openMeteoPollen.map(p => `
+                    <div class="pollen-item">
+                        <div class="detail-label">${p.name}</div>
+                        <div class="detail-value" style="color:${p.color};">${p.level}</div>
+                    </div>`).join('')}
+            </div>
+        `;
+        initDragScroll(section.querySelector('.pollen-scroll'));
+    } else {
+        // Non-European — check localStorage cache first
+        const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
+        const cached = localStorage.getItem(cacheKey);
+
+        if (cached) {
+            // Auto-show cached data without requiring button click
+            section.innerHTML = `
+                <h2>Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span></h2>
+                <div id="pollen-content"></div>
+            `;
+            displayPollenData(JSON.parse(cached));
+        } else {
+            // No cache — show a button to load pollen data on demand
+            section.innerHTML = `
+                <h2>Pollen</h2>
+                <div id="pollen-content">
+                    <button id="pollen-btn" class="pollen-btn">See pollen data</button>
+                </div>
+            `;
+            document.getElementById('pollen-btn').addEventListener('click', () => {
+                loadPollenData(lat, lon);
+            });
+        }
+    }
+}
+
+/**
+ * Display pollen data from the Google Pollen API response.
+ * Parses pollen type info (Tree/Grass/Weed) and individual plant info,
+ * then renders them as a horizontally scrollable list of pollen items.
+ * @param {Object} data - Google Pollen API response (from proxy or cache)
+ */
+function displayPollenData(data) {
+    const content = document.getElementById('pollen-content');
+    const section = document.getElementById('details-section');
+
+    if (!data || data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
+        content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">Pollen data unavailable for this location</span>';
+        return;
+    }
+
+    const day = data.dailyInfo[0]; // Use today's data
+    const types = day.pollenTypeInfo || [];   // Broad categories (Tree, Grass, Weed)
+    const plants = day.plantInfo || [];       // Specific plants (Birch, Ragweed, etc.)
+
+    // Build unified list of pollen items from both types and plants
+    let items = [];
+    for (const t of types) {
+        const idx = t.indexInfo;
+        if (!idx) continue;
+        items.push({ name: t.displayName, category: idx.category || 'None', value: idx.value });
+    }
+    for (const p of plants) {
+        const idx = p.indexInfo;
+        if (!idx || idx.value === 0) continue; // Skip plants with zero pollen
+        items.push({ name: p.displayName, category: idx.category, value: idx.value });
+    }
+
+    if (items.length === 0) {
+        content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">No significant pollen detected</span>';
+        return;
+    }
+
+    // Update section header with today's date
+    const h2 = section.querySelector('h2');
+    if (h2) {
+        h2.innerHTML = `Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span>`;
+    }
+
+    // Apply a special CSS class when there are few items (for centering)
+    const fewClass = items.length <= 3 ? ' pollen-few' : '';
+    content.innerHTML = `
+        <div class="pollen-scroll${fewClass}">
+            ${items.map(p => `
+                <div class="pollen-item">
+                    <div class="detail-label">${p.name}</div>
+                    <div class="detail-value" style="color:${pollenIndexColor(p.value)};">${p.category}</div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);">${p.value}/5</div>
+                </div>`).join('')}
+        </div>
+    `;
+    initDragScroll(content.querySelector('.pollen-scroll'));
+}
+
+/**
+ * Fetch pollen data from the Google Pollen API proxy, cache it in localStorage,
+ * and display the results. Shows loading state on the button.
+ * On failure, shows a retry button.
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ */
+async function loadPollenData(lat, lon) {
+    const btn = document.getElementById('pollen-btn');
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+
+    // Cache key includes rounded lat/lon and today's date for daily cache invalidation
+    const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
+
+    try {
+        const res = await fetch(`${POLLEN_PROXY_URL}?lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        displayPollenData(data);
+    } catch (e) {
+        // Show retry button on failure
+        const content = document.getElementById('pollen-content');
+        content.innerHTML = '<button id="pollen-btn" class="pollen-btn">Retry</button>';
+        document.getElementById('pollen-btn').addEventListener('click', () => loadPollenData(lat, lon));
+    }
+}
+
+/**
+ * Map a Google Pollen index value (0-5 scale) to a color.
+ * 0-1 = green (Low), 2 = lime, 3 = yellow (Medium), 4 = orange (High), 5 = red (Very High).
+ * @param {number} value - Pollen index value (0-5)
+ * @returns {string} CSS color hex string
+ */
+function pollenIndexColor(value) {
+    if (value <= 1) return '#16a34a';  // Low - green
+    if (value <= 2) return '#84cc16';  // Low-Medium - lime
+    if (value <= 3) return '#ca8a04';  // Medium - yellow
+    if (value <= 4) return '#ea580c';  // High - orange
+    return '#dc2626';                   // Very High - red
+}
+
+// =============================================================================
+// SECTION: Hourly Forecast
+// Renders a horizontally scrollable list of hourly weather for the next 24 hours.
+// =============================================================================
+
+/**
+ * Render the hourly forecast section as a horizontally scrollable row of items.
+ * Shows the next 24 hours starting from the current time. Each hour displays
+ * the time label, weather icon, and temperature.
+ * @param {Object} hourly - Open-Meteo hourly forecast data
+ */
+function renderHourly(hourly) {
+    const section = document.getElementById('hourly-section');
+    const now = new Date();
+    // Find the first hourly entry at or after the current time
+    const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+    if (startIdx === -1) { section.innerHTML = ''; return; }
+
+    let html = '<h2>Hourly Forecast</h2><div class="hourly-scroll">';
+    for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
+        const time = new Date(hourly.time[i]);
+        const hour = time.getHours();
+        // Format hour label based on 12h/24h preference
+        const label = units.time24h
+            ? hour.toString().padStart(2, '0') + ':00'
+            : (hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`);
+        const info = weatherInfo(hourly.weather_code[i]);
+        html += `
+            <div class="hourly-item">
+                <div>${label}</div>
+                <div style="font-size:1.3rem;">${info.icon}</div>
+                <div style="font-weight:600;">${Math.round(hourly.temperature_2m[i])}°</div>
+            </div>
+        `;
+    }
+    html += '</div>';
+    section.innerHTML = html;
+    initDragScroll(section.querySelector('.hourly-scroll'));
+}
+
+// =============================================================================
+// SECTION: 10-Day Forecast
+// Renders a unified horizontal scroll view with:
+//   - Day header columns (date, high/low, icon, condition, precip)
+//   - Canvas chart rows for temp, atmospheric, precip, and wind data
+//   - Sticky axis labels on left and right edges
+//   - Drag-to-scroll interaction
+// =============================================================================
+
+/** Width in pixels for each day column in the forecast scroll view */
+const DAY_WIDTH = 100;
+
+/**
+ * Render the complete 10-day forecast section with day headers and chart rows.
+ * Creates an outer scroll container with fixed-width inner content.
+ * Chart canvases are drawn asynchronously via requestAnimationFrame.
+ *
+ * @param {Object} daily - Open-Meteo daily forecast data (10 days)
+ * @param {Object} hourly - Open-Meteo hourly forecast data (used for chart lines)
+ */
+function renderDaily(daily, hourly) {
+    const section = document.getElementById('daily-section');
+    const days = daily.time.length;
+    const innerW = days * DAY_WIDTH; // Total width of chart canvases
+
+    // Pre-compute chart value ranges for consistent Y-axis scaling
+    const totalHours = Math.min(days * 24, hourly.time.length);
+    const chartRanges = computeChartRanges(hourly, totalHours);
+
+    // Compute average temperature per day for background coloring
+    const avgTemps = daily.time.map((_, i) =>
+        (daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2
+    );
+    // Store globally so theme toggle can recompute colors without refetching
+    window._forecastAvgTemps = avgTemps;
+    const tempRange = Math.max(...avgTemps) - Math.min(...avgTemps);
+    const showTempColors = tempRange >= TEMP_COLOR_THRESHOLD;
+
+    // Build HTML for day column headers (inside the scrollable area)
+    let dayHeaderHtml = '';
+    for (let i = 0; i < days; i++) {
+        const date = new Date(daily.time[i] + 'T00:00:00');
+        const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const dateLabel = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+        const info = weatherInfo(daily.weather_code[i]);
+        const precip = daily.precipitation_sum[i];
+        const minA = Math.min(...avgTemps);
+        const rangeA = (Math.max(...avgTemps) - minA) || 1;
+        const bg = tempBackground(avgTemps[i], minA, rangeA);
+        dayHeaderHtml += `
+            <div class="forecast-day" style="width:${DAY_WIDTH}px;min-width:${DAY_WIDTH}px;background:${bg};">
+                <div class="forecast-date">${dayLabel} ${dateLabel}</div>
+                <div class="forecast-temps">
+                    <span class="temp-high">${Math.round(daily.temperature_2m_max[i])}°</span>
+                    <span class="temp-low">${Math.round(daily.temperature_2m_min[i])}°</span>
+                </div>
+                <div class="forecast-icon">${info.icon}</div>
+                <div class="forecast-condition">${info.text}</div>
+                <div class="forecast-precip">${precip > 0 ? '💧 ' + fmtPrecip(precip) : ''}</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Build HTML for a single chart row with: legend bar, drag handle, hide button,
+     * sticky left/right axis labels, and a canvas element for drawing.
+     * @param {string} id - Canvas element ID (e.g., 'chart-temp')
+     * @param {number} height - Canvas height in pixels
+     * @param {string} legendHtml - HTML for the legend bar showing data series
+     * @param {string} leftLabels - HTML for left axis labels (sticky)
+     * @param {string} rightLabels - HTML for right axis labels (sticky)
+     * @returns {string} Complete chart row HTML
+     */
+    function chartRow(id, height, legendHtml, leftLabels, rightLabels) {
+        return `
+            <div class="chart-row" data-chart-id="${id}">
+                <div class="chart-legend"><span class="chart-drag-handle" title="Drag to reorder">⠿</span>${legendHtml}<button class="chart-min-btn" data-chart-id="${id}" title="Hide chart">✕</button></div>
+                <div class="chart-row-inner">
+                    <div class="chart-axis chart-axis-left">${leftLabels}</div>
+                    <canvas id="${id}" width="${innerW}" height="${height}" style="display:block;width:${innerW}px;height:${height}px;"></canvas>
+                    <div class="chart-axis chart-axis-right">${rightLabels}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Generate HTML for axis labels (evenly spaced from max at top to min at bottom).
+     * @param {number} min - Minimum axis value
+     * @param {number} max - Maximum axis value
+     * @param {number} steps - Number of label intervals
+     * @param {string} suffix - Unit suffix (e.g., '°', '%', '"')
+     * @param {string} color - CSS color for the label text
+     * @returns {string} HTML string of <span> elements
+     */
+    function makeLabels(min, max, steps, suffix, color) {
+        let html = '';
+        for (let i = steps; i >= 0; i--) {
+            const val = min + ((max - min) / steps) * i;
+            const label = Number.isInteger(val) ? val : val.toFixed(1);
+            html += `<span style="color:${color}">${label}${suffix}</span>`;
+        }
+        return html;
+    }
+
+    const r = chartRanges;
+
+    // Legend HTML strings for each chart type
+    const tempLegend = `<span><span style="color:#dc2626;">■</span> Temperature (${tempUnit()})</span><span><span style="color:#9333ea;">■</span> Feels Like (${tempUnit()})</span><span><span style="color:#16a34a;">■</span> Dew Point (${tempUnit()})</span>`;
+    const atmosLegend = '<span><span style="color:#9ca3af;">■</span> Cloud Cover (%)</span><span><span style="color:#3b82f6;">■</span> Precip Chance (%)</span><span><span style="color:#84cc16;">■</span> Humidity (%)</span><span><span style="color:#1a1a1a;">■</span> Pressure (inHg)</span>';
+    const precipLegend = `<span><span style="color:#3b82f6;">■</span> Precip Accum. (${isImperial() ? 'in' : 'mm'})</span><span><span style="color:#16a34a;">■</span> Hourly Precip (${isImperial() ? 'in' : 'mm'})</span>`;
+    const windLegend = `<span><span style="color:#2563eb;">■</span> Wind Speed (${windUnit()})</span>`;
+
+    // Axis width must match CSS .chart-axis width
+    const AXIS_W = 40;
+    const totalScrollW = innerW + AXIS_W * 2;
+
+    // Assemble the complete section HTML
+    section.innerHTML = `
+        <h2>10-Day Forecast ${showTempColors ? '<span style="text-transform:none;font-weight:400;font-size:0.7rem;color:var(--text-muted);">— colors show relative temps: red = warmest, blue = coolest</span>' : ''}</h2>
+        <div class="forecast-scroll-outer">
+            <div class="forecast-scroll" style="width:${totalScrollW}px;">
+                <div class="forecast-header">
+                    <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
+                    ${dayHeaderHtml}
+                    <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
+                </div>
+                ${chartRow('chart-temp', 160, tempLegend,
+                    makeLabels(r.temp.min, r.temp.max, 4, '°', '#dc2626'),
+                    makeLabels(r.temp.min, r.temp.max, 4, '°', '#dc2626'))}
+                ${chartRow('chart-atmos', 160, atmosLegend,
+                    makeLabels(0, 100, 4, '%', '#84cc16'),
+                    makeLabels(0, 100, 4, '%', '#84cc16'))}
+                ${chartRow('chart-precip', 100, precipLegend,
+                    makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6'),
+                    makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6'))}
+                ${chartRow('chart-wind', 100, windLegend,
+                    makeLabels(0, r.wind.max, 3, '', '#2563eb'),
+                    makeLabels(0, r.wind.max, 3, '', '#2563eb'))}
+                <div class="forecast-footer">
+                    <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
+                    ${daily.time.map((t, i) => {
+                        const date = new Date(t + 'T00:00:00');
+                        const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
+                        const dateLabel = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+                        return `<div class="forecast-footer-day" style="width:${DAY_WIDTH}px;min-width:${DAY_WIDTH}px;">${dayLabel} ${dateLabel}</div>`;
+                    }).join('')}
+                    <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Draw chart lines/areas on canvases after DOM is ready
+    requestAnimationFrame(() => drawAllCharts(hourly, totalHours, chartRanges));
+
+    // Enable drag-to-scroll on the forecast scroll container
+    initDragScroll(document.querySelector('.forecast-scroll-outer'));
+}
+
+/**
+ * Initialize mouse and touch drag-to-scroll on a horizontally scrollable element.
+ * Enables grab-cursor interactions for desktop and touch support for mobile.
+ * @param {HTMLElement} el - The scrollable container element
+ */
+function initDragScroll(el) {
+    if (!el) return;
+    let isDown = false;
+    let startX, scrollLeft;
+
+    el.style.cursor = 'grab';
+
+    // Mouse drag support
+    el.addEventListener('mousedown', (e) => {
+        isDown = true;
+        el.style.cursor = 'grabbing';
+        startX = e.pageX - el.offsetLeft;
+        scrollLeft = el.scrollLeft;
+    });
+
+    el.addEventListener('mouseleave', () => { isDown = false; el.style.cursor = 'grab'; });
+    el.addEventListener('mouseup', () => { isDown = false; el.style.cursor = 'grab'; });
+
+    el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - el.offsetLeft;
+        el.scrollLeft = scrollLeft - (x - startX);
+    });
+
+    // Touch support (mobile) — uses passive listeners for scroll performance
+    let touchStartX, touchScrollLeft;
+    el.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].pageX;
+        touchScrollLeft = el.scrollLeft;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (e) => {
+        const x = e.touches[0].pageX;
+        el.scrollLeft = touchScrollLeft - (x - touchStartX);
+    }, { passive: true });
+}
+
+// =============================================================================
+// SECTION: Canvas Chart Helpers
+// Low-level drawing functions for the 10-day forecast charts.
+// All functions operate on HTML5 Canvas 2D contexts.
+// =============================================================================
+
+/**
+ * Compute the Y-axis ranges for all chart types based on hourly data.
+ * These ranges ensure consistent scaling across all 10 days.
+ * @param {Object} hourly - Open-Meteo hourly forecast data
+ * @param {number} hours - Total number of hours to consider
+ * @returns {Object} Chart ranges: temp {min, max}, precip {maxAccum, maxHourly}, wind {max}
+ */
+function computeChartRanges(hourly, hours) {
+    const temp = hourly.temperature_2m.slice(0, hours);
+    const feels = hourly.apparent_temperature.slice(0, hours);
+    const dew = hourly.dew_point_2m.slice(0, hours);
+    const allTemps = [...temp, ...feels, ...dew]; // Combine all temp-like data for range
+
+    const precip = hourly.precipitation.slice(0, hours);
+    let accumTotal = 0;
+    for (let i = 0; i < hours; i++) accumTotal += precip[i] || 0;
+
+    const wind = hourly.wind_speed_10m.slice(0, hours);
+
+    return {
+        temp: { min: Math.floor(Math.min(...allTemps) - 5), max: Math.ceil(Math.max(...allTemps) + 5) },
+        precip: { maxAccum: Math.max(accumTotal, 0.1), maxHourly: Math.max(...precip, 0.01) },
+        wind: { max: Math.max(...wind, 5) }, // Minimum of 5 to avoid zero-height chart
+    };
+}
+
+/**
+ * Get the 2D rendering context and dimensions for a chart canvas.
+ * @param {string} id - Canvas element ID
+ * @returns {{ctx: CanvasRenderingContext2D, w: number, h: number}|null} Context and dimensions, or null if not found
+ */
+function getChartContext(id) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    return { ctx: canvas.getContext('2d'), w: canvas.width, h: canvas.height };
+}
+
+/**
+ * Draw a line chart on a canvas for a single data series.
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {number[]} data - Array of data values to plot
+ * @param {number} count - Number of data points to draw
+ * @param {string} color - CSS color for the line
+ * @param {number} minVal - Minimum value for Y-axis scaling
+ * @param {number} maxVal - Maximum value for Y-axis scaling
+ * @param {number} w - Canvas width in pixels
+ * @param {number} h - Canvas height in pixels
+ * @param {number} pad - Vertical padding in pixels (top and bottom)
+ */
+function drawLine(ctx, data, count, color, minVal, maxVal, w, h, pad) {
+    const drawH = h - pad * 2;
+    const range = maxVal - minVal || 1;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < count; i++) {
+        const x = (i / (count - 1)) * w;
+        const y = pad + drawH - ((data[i] - minVal) / range) * drawH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+
+/**
+ * Draw a filled area chart on a canvas (from the data line down to the bottom).
+ * Used for cloud cover and precipitation probability shading.
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {number[]} data - Array of data values
+ * @param {number} count - Number of data points
+ * @param {string} color - CSS fill color
+ * @param {number} alpha - Global alpha (transparency, 0-1)
+ * @param {number} minVal - Minimum value for Y-axis scaling
+ * @param {number} maxVal - Maximum value for Y-axis scaling
+ * @param {number} w - Canvas width
+ * @param {number} h - Canvas height
+ * @param {number} pad - Vertical padding
+ */
+function drawArea(ctx, data, count, color, alpha, minVal, maxVal, w, h, pad) {
+    const drawH = h - pad * 2;
+    const range = maxVal - minVal || 1;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.moveTo(0, h - pad); // Start at bottom-left
+    for (let i = 0; i < count; i++) {
+        const x = (i / (count - 1)) * w;
+        const y = pad + drawH - ((data[i] - minVal) / range) * drawH;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, h - pad); // Close at bottom-right
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1; // Reset alpha
+}
+
+/**
+ * Check if the page is currently in dark mode.
+ * @returns {boolean} True if data-theme="dark" is set on <html>
+ */
+function isDarkMode() {
+    return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
+/**
+ * Draw vertical day divider lines on a chart canvas.
+ * Lines are drawn every 24 data points (hours) to separate days visually.
+ * Color adapts to light/dark mode.
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {number} count - Total number of hourly data points
+ * @param {number} w - Canvas width
+ * @param {number} h - Canvas height
+ */
+function drawDayDividers(ctx, count, w, h) {
+    ctx.strokeStyle = isDarkMode() ? '#374151' : '#e5e7eb';
+    ctx.lineWidth = 1;
+    for (let i = 24; i < count; i += 24) {
+        const x = (i / (count - 1)) * w;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+    }
+}
+
+/**
+ * Draw a dashed vertical "now" line on a chart canvas at the current time position.
+ * Helps the user see where the present moment falls in the forecast timeline.
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {Object} hourly - Open-Meteo hourly data (used to find start time)
+ * @param {number} count - Total number of hourly data points
+ * @param {number} w - Canvas width
+ * @param {number} h - Canvas height
+ */
+function drawNowLine(ctx, hourly, count, w, h) {
+    const now = new Date();
+    const startTime = new Date(hourly.time[0]);
+    const hoursElapsed = (now - startTime) / (1000 * 60 * 60);
+    if (hoursElapsed < 0 || hoursElapsed > count) return; // "Now" is outside chart range
+    const x = (hoursElapsed / (count - 1)) * w;
+    ctx.strokeStyle = isDarkMode() ? '#9ca3af' : '#1a1a1a';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+    ctx.setLineDash([]); // Reset dash pattern
+}
+
+// =============================================================================
+// SECTION: Chart Drawing
+// Draws all four forecast chart canvases: temperature, atmospheric conditions,
+// precipitation, and wind. Called after the DOM is populated with canvas elements.
+// =============================================================================
+
+/**
+ * Draw all four chart canvases for the 10-day forecast.
+ * Each chart includes day dividers, a "now" line, and data-specific visualizations:
+ *   - Temperature: line charts for actual temp (red), feels-like (purple), dew point (green)
+ *   - Atmospheric: filled areas for cloud cover (gray) and precip chance (blue),
+ *     lines for humidity (lime) and pressure (black, own scale)
+ *   - Precipitation: bar chart for hourly precip (green), line for cumulative (blue)
+ *   - Wind: filled area + line (blue), with directional arrow markers every 6 hours
+ *
+ * @param {Object} hourly - Open-Meteo hourly forecast data
+ * @param {number} hours - Total number of hours to chart
+ * @param {Object} r - Pre-computed chart ranges from computeChartRanges()
+ */
+function drawAllCharts(hourly, hours, r) {
+    // --- Temperature chart ---
+    const c1 = getChartContext('chart-temp');
+    if (c1) {
+        const { ctx, w, h } = c1;
+        const pad = 10;
+        const temp = hourly.temperature_2m.slice(0, hours);
+        const feels = hourly.apparent_temperature.slice(0, hours);
+        const dew = hourly.dew_point_2m.slice(0, hours);
+        drawDayDividers(ctx, hours, w, h);
+        drawNowLine(ctx, hourly, hours, w, h);
+        // Draw in back-to-front order: dew point, feels-like, then actual temp on top
+        drawLine(ctx, dew, hours, '#16a34a', r.temp.min, r.temp.max, w, h, pad);
+        drawLine(ctx, feels, hours, '#9333ea', r.temp.min, r.temp.max, w, h, pad);
+        drawLine(ctx, temp, hours, '#dc2626', r.temp.min, r.temp.max, w, h, pad);
+    }
+
+    // --- Atmospheric chart (cloud cover, precip chance, humidity, pressure) ---
+    const c2 = getChartContext('chart-atmos');
+    if (c2) {
+        const { ctx, w, h } = c2;
+        const pad = 10;
+        const cloud = hourly.cloud_cover.slice(0, hours);
+        const precipChance = hourly.precipitation_probability.slice(0, hours);
+        const humidity = hourly.relative_humidity_2m.slice(0, hours);
+        const pressure = hourly.surface_pressure.slice(0, hours);
+        drawDayDividers(ctx, hours, w, h);
+        drawNowLine(ctx, hourly, hours, w, h);
+        // Filled areas for cloud and precip probability (semi-transparent)
+        drawArea(ctx, cloud, hours, '#9ca3af', 0.3, 0, 100, w, h, pad);
+        drawArea(ctx, precipChance, hours, '#3b82f6', 0.3, 0, 100, w, h, pad);
+        // Lines on top
+        drawLine(ctx, humidity, hours, '#84cc16', 0, 100, w, h, pad);
+        drawLine(ctx, cloud, hours, '#9ca3af', 0, 100, w, h, pad);
+        drawLine(ctx, precipChance, hours, '#3b82f6', 0, 100, w, h, pad);
+        // Pressure uses its own auto-scaled range (not 0-100%)
+        const pMin = Math.min(...pressure) - 0.1;
+        const pMax = Math.max(...pressure) + 0.1;
+        drawLine(ctx, pressure, hours, '#1a1a1a', pMin, pMax, w, h, pad);
+    }
+
+    // --- Precipitation chart (hourly bars + cumulative line) ---
+    const c3 = getChartContext('chart-precip');
+    if (c3) {
+        const { ctx, w, h } = c3;
+        const pad = 8;
+        const precip = hourly.precipitation.slice(0, hours);
+        // Compute running accumulation
+        const accum = [];
+        let total = 0;
+        for (let i = 0; i < hours; i++) { total += precip[i] || 0; accum.push(total); }
+        drawDayDividers(ctx, hours, w, h);
+        drawNowLine(ctx, hourly, hours, w, h);
+        // Draw individual hourly precip as vertical bars
+        const barW = w / hours;
+        ctx.fillStyle = '#16a34a';
+        for (let i = 0; i < hours; i++) {
+            if (precip[i] > 0) {
+                // Bar height is proportional to the max hourly precip, capped at 40% of chart height
+                const barH = (precip[i] / r.precip.maxHourly) * (h - pad * 2) * 0.4;
+                const x = (i / (hours - 1)) * w;
+                ctx.fillRect(x - barW / 2, h - pad - barH, barW, barH);
+            }
+        }
+        // Cumulative precipitation line
+        drawLine(ctx, accum, hours, '#3b82f6', 0, r.precip.maxAccum, w, h, pad);
+    }
+
+    // --- Wind chart (area + line + directional arrows) ---
+    const c4 = getChartContext('chart-wind');
+    if (c4) {
+        const { ctx, w, h } = c4;
+        const pad = 8;
+        const wind = hourly.wind_speed_10m.slice(0, hours);
+        const dirs = hourly.wind_direction_10m.slice(0, hours);
+        drawDayDividers(ctx, hours, w, h);
+        drawNowLine(ctx, hourly, hours, w, h);
+        // Filled area under the wind speed curve
+        drawArea(ctx, wind, hours, '#2563eb', 0.15, 0, r.wind.max, w, h, pad);
+        drawLine(ctx, wind, hours, '#2563eb', 0, r.wind.max, w, h, pad);
+        // Draw small triangular wind direction arrows every 6 hours
+        ctx.fillStyle = '#2563eb';
+        for (let i = 0; i < hours; i += 6) {
+            const x = (i / (hours - 1)) * w;
+            const y = pad + (h - pad * 2) - (wind[i] / r.wind.max) * (h - pad * 2) - 12;
+            // Arrow points in the direction the wind is blowing TO (+180 from meteorological convention)
+            const angle = (dirs[i] + 180) * Math.PI / 180;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, -5);
+            ctx.lineTo(-3, 5);
+            ctx.lineTo(3, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+}
+
+// =============================================================================
+// SECTION: Weather Alerts
+// Renders NWS (National Weather Service) weather alerts for US locations.
+// =============================================================================
+
+/**
+ * Render weather alerts from the NWS API. Hides the section if no alerts exist.
+ * Each alert shows the event name and headline.
+ * @param {Array} alerts - Array of GeoJSON alert features from fetchAlerts()
+ */
+function renderAlerts(alerts) {
+    const section = document.getElementById('alerts-section');
+    if (!alerts || alerts.length === 0) {
+        section.hidden = true;
+        return;
+    }
+    section.hidden = false;
+    let html = '<h2>⚠️ Weather Alerts</h2>';
+    for (const alert of alerts) {
+        const p = alert.properties;
+        html += `
+            <div style="margin-bottom:0.75rem;">
+                <strong>${p.event}</strong>
+                <div style="font-size:0.85rem;margin-top:0.25rem;">${p.headline || ''}</div>
+            </div>
+        `;
+    }
+    section.innerHTML = html;
+}
+
+// =============================================================================
+// SECTION: Radar
+// Renders an animated radar map using RainViewer API for precipitation data
+// and CartoDB for the base map tiles. The radar view is centered on the
+// searched location with a marker dot. Frames animate at 500ms intervals.
+// =============================================================================
+
+/** Interval ID for the radar frame animation loop (cleared on re-render) */
+let radarInterval = null;
+
+/**
+ * Render the radar section container and initiate radar data loading.
+ * Clears any existing animation interval before starting a new one.
+ * @param {number} lat - Latitude of the location to center on
+ * @param {number} lon - Longitude of the location to center on
+ */
+function renderRadar(lat, lon) {
+    if (radarInterval) { clearInterval(radarInterval); radarInterval = null; }
+
+    const section = document.getElementById('radar-section');
+    section.innerHTML = `
+        <h2>Radar</h2>
+        <div id="radar-container" style="position:relative;width:100%;aspect-ratio:1;background:#1a1a2e;border-radius:8px;overflow:hidden;">
+            <div class="loading" style="color:#9ca3af;">Loading radar...</div>
+        </div>
+        <div id="radar-time" style="text-align:center;font-size:0.8rem;color:#6b7280;margin-top:0.5rem;"></div>
+    `;
+    loadRadar(lat, lon);
+}
+
+/**
+ * Load radar data from RainViewer and render animated radar tiles.
+ *
+ * Process:
+ *   1. Fetch available radar frames from RainViewer API
+ *   2. Calculate map tile coordinates at zoom level 7
+ *   3. Compute pixel offsets to center the city in the container
+ *   4. Build a 5x5 grid of CartoDB base map tiles
+ *   5. Build matching 5x5 grids for each radar frame (hidden except latest)
+ *   6. Add a crosshair marker at the city center
+ *   7. Start an animation loop cycling through radar frames at 500ms
+ *
+ * Uses Mercator projection math to convert lat/lon to tile coordinates.
+ * The 5x5 grid ensures full coverage regardless of where the city falls within its tile.
+ *
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ */
+async function loadRadar(lat, lon) {
+    try {
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const data = await res.json();
+        const frames = data.radar.past; // Array of past radar snapshots
+
+        const container = document.getElementById('radar-container');
+        const zoom = 7; // Zoom level for regional radar view
+        const n = Math.pow(2, zoom); // Number of tiles at this zoom level
+
+        // Calculate exact fractional tile position for the city using Mercator projection
+        const exactX = (lon + 180) / 360 * n;
+        const exactY = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
+
+        // Integer tile coordinates containing the city
+        const centerTileX = Math.floor(exactX);
+        const centerTileY = Math.floor(exactY);
+
+        // Fractional position within the center tile (0-1)
+        const fracX = exactX - centerTileX;
+        const fracY = exactY - centerTileY;
+
+        // Use a 5x5 tile grid centered on the city's tile.
+        // Calculate CSS offsets to position the city at 50% of the container.
+        // The city is at grid position (2 + frac) out of 5 tiles.
+        const gridSize = 5;
+        const offsetX = 50 - (2 + fracX) / gridSize * 500;
+        const offsetY = 50 - (2 + fracY) / gridSize * 500;
+
+        /**
+         * Build HTML for a 5x5 grid of map/radar tiles.
+         * @param {Function} tileSrcFn - Function(tx, ty) returning tile image URL
+         * @param {string} extraStyle - Additional inline CSS for the grid container
+         * @returns {string} Grid HTML with positioned tile images
+         */
+        function buildTileGrid(tileSrcFn, extraStyle) {
+            let html = `<div style="position:absolute;left:${offsetX}%;top:${offsetY}%;width:${gridSize * 100}%;height:${gridSize * 100}%;display:grid;grid-template-columns:repeat(${gridSize},1fr);${extraStyle || ''}">`;
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    // Each tile image has retry logic on error (up to 3 retries with backoff)
+                    html += `<img src="${tileSrcFn(centerTileX + dx, centerTileY + dy)}" alt="" style="width:100%;height:100%;display:block;" data-retries="0" onerror="if(this.dataset.retries<3){this.dataset.retries++;setTimeout(()=>{this.src=this.src+'&r='+this.dataset.retries},1000*this.dataset.retries)}else{this.style.visibility='hidden'}">`;
+                }
+            }
+            return html + '</div>';
+        }
+
+        // Base map layer from CartoDB (adapts to dark/light mode)
+        const mapHtml = buildTileGrid(
+            (tx, ty) => {
+                const style = isDarkMode() ? 'dark_all' : 'rastertiles/voyager';
+                return `https://a.basemaps.cartocdn.com/${style}/${zoom}/${tx}/${ty}@2x.png`;
+            },
+            'opacity:0.7;'
+        );
+
+        // Radar overlay layers — one grid per time frame, all hidden except the latest
+        let radarHtml = '';
+        frames.forEach((frame, i) => {
+            radarHtml += buildTileGrid(
+                (tx, ty) => `https://tilecache.rainviewer.com${frame.path}/256/${zoom}/${tx}/${ty}/2/1_0.png`,
+                `opacity:${i === frames.length - 1 ? 1 : 0};transition:opacity 0.3s;`
+            ).replace('<div ', `<div class="radar-frame" data-frame="${i}" `);
+        });
+
+        // City center marker — blue circle with white shadow
+        const markerHtml = `
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;pointer-events:none;">
+                <div style="width:12px;height:12px;border:2px solid #2563eb;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,0.8);"></div>
+            </div>`;
+
+        container.innerHTML = mapHtml + radarHtml + markerHtml;
+
+        // Display timestamp for the currently shown frame
+        const timeEl = document.getElementById('radar-time');
+        const showFrameTime = (frame) => {
+            const d = new Date(frame.time * 1000); // RainViewer uses Unix timestamps
+            timeEl.textContent = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        };
+        showFrameTime(frames[frames.length - 1]);
+
+        // Animate: cycle through radar frames at 500ms intervals
+        let currentFrame = frames.length - 1;
+        const allFrameEls = container.querySelectorAll('.radar-frame');
+
+        radarInterval = setInterval(() => {
+            allFrameEls[currentFrame].style.opacity = '0';       // Hide current frame
+            currentFrame = (currentFrame + 1) % frames.length;   // Advance to next
+            allFrameEls[currentFrame].style.opacity = '1';       // Show next frame
+            showFrameTime(frames[currentFrame]);
+        }, 500);
+
+    } catch {
+        document.getElementById('radar-container').innerHTML =
+            '<div style="text-align:center;padding:2rem;color:#9ca3af;">Radar unavailable</div>';
+    }
+}
+
+// =============================================================================
+// SECTION: Sun & Moon
+// Renders sunrise/sunset/solar noon data and moon phase with rise/set times.
+// =============================================================================
+
+/**
+ * Render both the Sun and Moon sections.
+ * Sun data comes from the Open-Meteo daily forecast (sunrise/sunset).
+ * Moon phase is calculated algorithmically; moonrise/moonset times are computed
+ * using a simplified astronomical altitude calculation.
+ *
+ * @param {Object} daily - Open-Meteo daily forecast data (contains sunrise/sunset)
+ * @param {number} lat - Latitude (needed for moonrise/moonset calculation)
+ * @param {number} lon - Longitude (needed for moonrise/moonset calculation)
+ */
+function renderSunMoon(daily, lat, lon) {
+    const fmtTime = fmtTimeUnit;
+
+    /**
+     * Format a date for display as "Month Day" (e.g., "January 15").
+     * @param {Date} d - Date to format
+     * @returns {string} Formatted date string, or empty string if invalid
+     */
+    const fmtDate = (d) => {
+        if (!d || isNaN(d)) return '';
+        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    };
+
+    // --- Sun section ---
+    const sunrise = new Date(daily.sunrise[0]);
+    const sunset = new Date(daily.sunset[0]);
+    // Solar noon is the midpoint between sunrise and sunset
+    const solarNoon = new Date((sunrise.getTime() + sunset.getTime()) / 2);
+    const sunDateLabel = fmtDate(sunrise);
+
+    const sunSection = document.getElementById('sun-section');
+    sunSection.innerHTML = `
+        <h2>Sun <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${sunDateLabel})</span></h2>
+        <div class="astro-grid">
+            <div class="astro-item">
+                <div style="font-size:1.5rem;">🌅</div>
+                <div class="label">Sunrise</div>
+                <div class="value">${fmtTime(sunrise)}</div>
+            </div>
+            <div class="astro-item">
+                <div style="font-size:1.5rem;">☀️</div>
+                <div class="label">Solar Noon</div>
+                <div class="value">${fmtTime(solarNoon)}</div>
+            </div>
+            <div class="astro-item">
+                <div style="font-size:1.5rem;">🌇</div>
+                <div class="label">Sunset</div>
+                <div class="value">${fmtTime(sunset)}</div>
+            </div>
+        </div>
+    `;
+
+    // --- Moon section ---
+    const now = new Date();
+    const moon = getMoonPhase(now);
+    const moonTimes = getMoonTimes(now, lat, lon);
+
+    // Show dates for moonrise/set since they may fall on different days
+    const riseDate = moonTimes.rise ? fmtDate(moonTimes.rise) : '';
+    const setDate = moonTimes.set ? fmtDate(moonTimes.set) : '';
+
+    const moonSection = document.getElementById('moon-section');
+    moonSection.innerHTML = `
+        <h2>Moon</h2>
+        <div class="astro-grid">
+            <div class="astro-item">
+                <div style="font-size:1.5rem;">🌔</div>
+                <div class="label">Moonrise</div>
+                <div class="value">${fmtTime(moonTimes.rise)}</div>
+                <div class="label">${riseDate}</div>
+            </div>
+            <div class="astro-item">
+                <div style="font-size:1.5rem;">${moon.icon}</div>
+                <div class="label">Phase</div>
+                <div class="value">${moon.name}</div>
+            </div>
+            <div class="astro-item">
+                <div style="font-size:1.5rem;">🌘</div>
+                <div class="label">Moonset</div>
+                <div class="value">${fmtTime(moonTimes.set)}</div>
+                <div class="label">${setDate}</div>
+            </div>
+        </div>
+    `;
+}
+
+// =============================================================================
+// SECTION: Moonrise/Moonset Calculation
+// Simplified astronomical algorithm based on Jean Meeus' "Astronomical Algorithms".
+// Computes the Moon's altitude above the horizon at a given time and scans
+// through the day in 10-minute increments to find rise/set events.
+// =============================================================================
+
+/**
+ * Calculate moonrise and moonset times for a given date and location.
+ * Finds the first moonrise from the start of the day, then the first moonset
+ * after that rise.
+ * @param {Date} date - The date to calculate for
+ * @param {number} lat - Observer latitude in degrees
+ * @param {number} lon - Observer longitude in degrees
+ * @returns {{rise: Date|null, set: Date|null}} Moonrise and moonset times, or null if the moon doesn't rise/set
+ */
+function getMoonTimes(date, lat, lon) {
+    const rise = findMoonEvent(date, lat, lon, 'rise', 1440); // Search up to 24 hours
+    const searchStart = rise || date;
+    const set = findMoonEvent(searchStart, lat, lon, 'set', 1440);
+    return { rise, set };
+}
+
+/**
+ * Search for a moonrise or moonset event by scanning altitude changes.
+ * Steps through time in 10-minute increments and detects when the moon's
+ * altitude crosses the -0.833 degree threshold (accounting for atmospheric
+ * refraction and the moon's apparent diameter).
+ * Uses linear interpolation to refine the exact crossing time.
+ *
+ * @param {Date} date - Starting date/time for the search
+ * @param {number} lat - Observer latitude in degrees
+ * @param {number} lon - Observer longitude in degrees
+ * @param {string} type - 'rise' or 'set'
+ * @param {number} maxMinutes - Maximum number of minutes to search forward
+ * @returns {Date|null} Time of the event, or null if not found within maxMinutes
+ */
+function findMoonEvent(date, lat, lon, type, maxMinutes) {
+    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const startTime = (type === 'set' && date > startOfDay) ? date : startOfDay;
+
+    let prevAlt = moonAltitude(startTime, lat, lon);
+
+    // Scan in 10-minute increments looking for altitude threshold crossing
+    for (let m = 10; m <= maxMinutes; m += 10) {
+        const t = new Date(startTime.getTime() + m * 60000);
+        const alt = moonAltitude(t, lat, lon);
+
+        // Moonrise: altitude crosses from below -0.833 to above
+        if (type === 'rise' && prevAlt < -0.833 && alt >= -0.833) {
+            // Linear interpolation for more precise time
+            const frac = (0 - prevAlt) / (alt - prevAlt);
+            return new Date(startTime.getTime() + (m - 10 + frac * 10) * 60000);
+        }
+        // Moonset: altitude crosses from above -0.833 to below
+        if (type === 'set' && prevAlt >= -0.833 && alt < -0.833) {
+            const frac = (0 - prevAlt) / (alt - prevAlt);
+            return new Date(startTime.getTime() + (m - 10 + frac * 10) * 60000);
+        }
+        prevAlt = alt;
+    }
+    return null; // Moon doesn't rise/set within the search window
+}
+
+/**
+ * Calculate the Moon's altitude above the horizon for a given time and observer location.
+ * Uses a simplified version of the astronomical algorithm:
+ *   1. Compute Julian Date
+ *   2. Calculate Moon's ecliptic longitude and latitude (simplified)
+ *   3. Convert ecliptic to equatorial coordinates (Right Ascension, Declination)
+ *   4. Compute hour angle from Greenwich Mean Sidereal Time
+ *   5. Calculate altitude from observer's latitude and hour angle
+ *
+ * @param {Date} date - UTC date/time to calculate for
+ * @param {number} lat - Observer latitude in degrees
+ * @param {number} lon - Observer longitude in degrees
+ * @returns {number} Moon altitude in degrees (negative = below horizon)
+ */
+function moonAltitude(date, lat, lon) {
+    const RAD = Math.PI / 180;
+
+    // Julian date from calendar date
+    const JD = dateToJD(date);
+    // Julian centuries since J2000.0 epoch
+    const T = (JD - 2451545.0) / 36525.0;
+
+    // Simplified Moon ecliptic longitude calculation
+    const L0 = 218.3165 + 481267.8813 * T;   // Mean longitude
+    const M = 134.9634 + 477198.8676 * T;     // Mean anomaly
+    const D = 297.8502 + 445267.1115 * T;     // Mean elongation
+    const F = 93.2720 + 483202.0175 * T;      // Argument of latitude
+
+    // Apply largest correction term to mean longitude
+    const Lm = L0 + 6.289 * Math.sin(M * RAD);
+    // Ecliptic latitude (simplified)
+    const Bm = 5.128 * Math.sin(F * RAD);
+
+    // Convert ecliptic to equatorial coordinates using obliquity of the ecliptic
+    const obliq = 23.439 - 0.0000004 * (JD - 2451545.0);
+    const cosObl = Math.cos(obliq * RAD);
+    const sinObl = Math.sin(obliq * RAD);
+
+    const lRad = Lm * RAD;
+    const bRad = Bm * RAD;
+
+    // Right Ascension
+    const RA = Math.atan2(
+        Math.sin(lRad) * cosObl - Math.tan(bRad) * sinObl,
+        Math.cos(lRad)
+    );
+    // Declination
+    const Dec = Math.asin(
+        Math.sin(bRad) * cosObl + Math.cos(bRad) * sinObl * Math.sin(lRad)
+    );
+
+    // Greenwich Mean Sidereal Time and Local Sidereal Time
+    const GMST = 280.46061837 + 360.98564736629 * (JD - 2451545.0);
+    const LST = (GMST + lon) * RAD;
+    // Hour angle = local sidereal time - right ascension
+    const HA = LST - RA;
+
+    // Altitude above horizon
+    const sinAlt = Math.sin(lat * RAD) * Math.sin(Dec) +
+                   Math.cos(lat * RAD) * Math.cos(Dec) * Math.cos(HA);
+
+    return Math.asin(sinAlt) / RAD;
+}
+
+/**
+ * Convert a JavaScript Date to Julian Date.
+ * Julian Date is a continuous count of days used in astronomical calculations.
+ * Accounts for the Gregorian calendar reform.
+ * @param {Date} date - Date to convert (uses UTC components)
+ * @returns {number} Julian Date (fractional day)
+ */
+function dateToJD(date) {
+    const Y = date.getUTCFullYear();
+    const M = date.getUTCMonth() + 1;
+    const D = date.getUTCDate() + date.getUTCHours() / 24 +
+              date.getUTCMinutes() / 1440 + date.getUTCSeconds() / 86400;
+    let y = Y, m = M;
+    if (m <= 2) { y--; m += 12; } // Jan/Feb treated as months 13/14 of previous year
+    const A = Math.floor(y / 100);
+    const B = 2 - A + Math.floor(A / 4); // Gregorian calendar correction
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + D + B - 1524.5;
+}
+
+/**
+ * Calculate the day-of-year for a given date (1-366).
+ * @param {Date} date - The date to calculate for
+ * @returns {number} Day of the year
+ */
+function getDayOfYear(date) {
+    const start = new Date(date.getFullYear(), 0, 0);
+    return Math.floor((date - start) / 86400000);
+}
+
+// =============================================================================
+// SECTION: Orchestrator
+// Main function that coordinates all data fetching and rendering. Also handles
+// re-fetching when units change.
+// =============================================================================
+
+/** Cached coordinates of the last searched location (used for re-fetching on unit toggle) */
+let _lastLat = null, _lastLon = null;
+
+/**
+ * Fetch all weather data and render every section of the weather view.
+ * This is the main orchestrator function that:
+ *   1. Clears all section content and shows loading state
+ *   2. Fires off parallel API requests (weather, alerts, air quality)
+ *   3. Renders all sections in sequence once data arrives
+ *   4. Applies section layout preferences (order, visibility, minimized state)
+ *
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ */
+async function fetchAllWeatherData(lat, lon) {
+    _lastLat = lat;
+    _lastLon = lon;
+
+    // Clear all sections and show loading state
+    document.getElementById('alerts-section').hidden = true;
+    document.getElementById('weather-summary').textContent = '';
+    document.getElementById('current-section').innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById('details-section').innerHTML = '';
+    document.getElementById('hourly-section').innerHTML = '';
+    document.getElementById('daily-section').innerHTML = '';
+    document.getElementById('radar-section').innerHTML = '';
+    document.getElementById('sun-section').innerHTML = '';
+    document.getElementById('moon-section').innerHTML = '';
+
+    try {
+        // Fetch weather, alerts, and air quality in parallel
+        const [meteo, alerts, airQuality] = await Promise.all([
+            fetchOpenMeteo(lat, lon),
+            fetchAlerts(lat, lon),
+            fetchAirQuality(lat, lon),
+        ]);
+
+        // Render all sections
+        document.getElementById('weather-summary').textContent =
+            generateSummary(meteo.current, meteo.hourly, meteo.daily);
+        renderCurrent(meteo.current, airQuality);
+        renderPollen(airQuality, lat, lon);
+        renderHourly(meteo.hourly);
+        renderDaily(meteo.daily, meteo.hourly);
+        renderAlerts(alerts);
+        renderRadar(lat, lon);
+        renderSunMoon(meteo.daily, lat, lon);
+
+        // Apply user's section layout preferences (order, column, hidden, minimized)
+        applySectionPreferences();
+    } catch (err) {
+        document.getElementById('current-section').innerHTML =
+            `<p class="error">Failed to load weather data. Please try again.</p>`;
+    }
+}
+
+// =============================================================================
+// SECTION: Navigation & Event Listeners
+// Handles view switching (home <-> weather), search form submission, unit
+// toggles, and browser history integration.
+// =============================================================================
+
+/**
+ * Switch to the home/search view. Resets the search input and hides errors.
+ */
+function showHome() {
+    weatherView.hidden = true;
+    homeView.hidden = false;
+    searchInput.value = '';
+    searchError.hidden = true;
+}
+
+/**
+ * Switch to the weather results view. Sets the location name header.
+ * For zip code searches, appends the zip code in parentheses.
+ * @param {Object} location - Location object with name and region
+ * @param {string} query - Original search query (used to detect zip searches)
+ */
+function showWeather(location, query) {
+    homeView.hidden = true;
+    weatherView.hidden = false;
+    const zipMatch = query && query.trim().match(/^(\d{5})$/);
+    if (zipMatch) {
+        locationName.textContent = `${location.name}, ${location.region} (${zipMatch[1]})`;
+    } else {
+        locationName.textContent = `${location.name}, ${location.region}`;
+    }
+}
+
+// Search form submission handler
+searchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    searchError.hidden = true;
+    searchForm.querySelector('button').disabled = true;
+    searchForm.querySelector('button').textContent = 'Searching...';
+
+    try {
+        const location = await geocode(query);
+        setUnitsForCountry(location.country); // Auto-detect or apply stored units
+        updateURL(query);                     // Push query to browser history
+        showWeather(location, query);
+        fetchAllWeatherData(location.lat, location.lon);
+    } catch (err) {
+        searchError.textContent = err.message;
+        searchError.hidden = false;
+    } finally {
+        searchForm.querySelector('button').disabled = false;
+        searchForm.querySelector('button').textContent = 'Search';
+    }
+});
+
+// Back button: return to home view and clear URL query parameter
+backBtn.addEventListener('click', () => {
+    showHome();
+    history.pushState(null, '', location.pathname);
+});
+
+// Temperature unit toggle: switch F<->C and re-fetch all data with new units
+document.getElementById('units-toggle').addEventListener('click', () => {
+    toggleUnits();
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
+});
+
+// Time format toggle: switch 12h<->24h and re-fetch all data for reformatting
+document.getElementById('time-toggle').addEventListener('click', () => {
+    units.time24h = !units.time24h;
+    updateUnitsToggleLabel();
+    saveUnitsPref();
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
+});
+
+// =============================================================================
+// SECTION: URL State Management
+// Supports deep-linking via ?q=<query> parameter and legacy #<query> hash.
+// Integrates with browser back/forward navigation via popstate.
+// =============================================================================
+
+/**
+ * Update the browser URL with the search query (without page reload).
+ * @param {string} query - The search query to encode in the URL
+ */
+function updateURL(query) {
+    history.pushState(null, '', `?q=${encodeURIComponent(query)}`);
+}
+
+/**
+ * Extract the search query from the current URL.
+ * Supports both ?q=<query> (preferred) and #<query> (legacy) formats.
+ * @returns {string} The search query, or empty string if none found
+ */
+function getQueryFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('q')) return params.get('q');
+    // Legacy hash-based URL support
+    if (window.location.hash.length > 1) return decodeURIComponent(window.location.hash.slice(1));
+    return '';
+}
+
+// Handle browser back/forward navigation
+window.addEventListener('popstate', () => {
+    const query = getQueryFromURL();
+    if (query) {
+        searchInput.value = query;
+        searchForm.dispatchEvent(new Event('submit'));
+    } else {
+        showHome();
+    }
+});
+
+// Auto-load weather from URL on initial page load (IIFE)
+(function () {
+    const query = getQueryFromURL();
+    if (query) {
+        searchInput.value = query;
+        searchForm.dispatchEvent(new Event('submit'));
+    }
+})();
+
+// Initialize drag-to-reorder for both sections and charts
+// (uses event delegation, so works across dynamic re-renders)
+initSectionDrag();
+initChartDrag();
+
+// =============================================================================
+// SECTION: Dark Mode
+// Manages the light/dark theme toggle with localStorage persistence.
+// Falls back to OS-level prefers-color-scheme if no stored preference exists.
+// Re-renders theme-sensitive elements (day backgrounds, radar map tiles).
+// =============================================================================
+
+(function () {
+    const toggle = document.getElementById('theme-toggle');
+    const stored = localStorage.getItem('theme');
+
+    /**
+     * Apply a theme to the page and persist it.
+     * Updates the data-theme attribute, toggle button icon, forecast day
+     * backgrounds, and re-renders the radar map (different CartoDB tile styles).
+     * @param {string} theme - 'dark' or 'light'
+     */
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        localStorage.setItem('theme', theme);
+        updateDayBackgrounds();       // Recompute temperature colors for new theme
+        if (_lastLat !== null) renderRadar(_lastLat, _lastLon); // Re-render radar with correct map style
+    }
+
+    // Initialize theme: use stored preference, fall back to OS dark mode preference
+    if (stored) {
+        setTheme(stored);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+    }
+
+    // Toggle between dark and light on button click
+    toggle.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+})();
+
+// =============================================================================
+// SECTION: Restore Defaults
+// Clears all section layout preferences and re-fetches weather data to reset
+// the UI to its default layout.
+// =============================================================================
+
+document.getElementById('restore-defaults').addEventListener('click', () => {
+    localStorage.removeItem('sectionPrefs');
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
+});
+
+// =============================================================================
+// SECTION: Privacy Panel
+// Toggleable privacy information panel accessible from both the home and
+// weather views. Closes when clicking outside the panel.
+// =============================================================================
+
+/**
+ * Toggle the visibility of the privacy information panel.
+ */
+function togglePrivacy() {
+    const panel = document.getElementById('privacy-panel');
+    panel.hidden = !panel.hidden;
+}
+
+// Wire up privacy toggle buttons (one on home view, one on weather view)
+document.getElementById('privacy-toggle-home').addEventListener('click', togglePrivacy);
+document.getElementById('privacy-toggle-weather').addEventListener('click', togglePrivacy);
+
+// Close button inside the privacy panel
+document.getElementById('privacy-close').addEventListener('click', () => {
+    document.getElementById('privacy-panel').hidden = true;
+});
+
+// Close privacy panel when clicking outside it (but not on the toggle buttons)
+document.addEventListener('click', (e) => {
+    const panel = document.getElementById('privacy-panel');
+    if (!panel.hidden &&
+        !panel.contains(e.target) &&
+        e.target.id !== 'privacy-toggle-home' &&
+        e.target.id !== 'privacy-toggle-weather') {
+        panel.hidden = true;
+    }
+});
