@@ -2417,6 +2417,30 @@ loadFromURL();
 initSectionDrag();
 initChartDrag();
 
+// --- PWA Manifest (dynamic start_url) ----------------------------------------
+
+(function () {
+    const manifest = {
+        name: 'NoAdsWeather',
+        short_name: 'Weather',
+        description: 'Weather without the clutter.',
+        start_url: window.location.href,
+        display: 'standalone',
+        background_color: '#111827',
+        theme_color: '#111827',
+        icons: [{
+            src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⛅</text></svg>',
+            sizes: 'any',
+            type: 'image/svg+xml',
+        }],
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = URL.createObjectURL(blob);
+    document.head.appendChild(link);
+})();
+
 // --- Dark Mode ---------------------------------------------------------------
 
 (function () {
