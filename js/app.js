@@ -136,6 +136,30 @@ function saveSectionPrefs(prefs) {
     localStorage.setItem('sectionPrefs', JSON.stringify(prefs));
 }
 
+function saveLayoutFromDOM() {
+    const container = document.getElementById('weather-content');
+    if (!container) return;
+    const prefs = loadSectionPrefs();
+    const newList = [];
+    for (const child of container.children) {
+        if (child.classList && child.classList.contains('columns-row')) {
+            const left = child.querySelector('.weather-col:first-child');
+            const right = child.querySelector('.weather-col:last-child');
+            const leftSections = left ? [...left.querySelectorAll('section')].map(s => s.id) : [];
+            const rightSections = right ? [...right.querySelectorAll('section')].map(s => s.id) : [];
+            const maxLen = Math.max(leftSections.length, rightSections.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (i < leftSections.length) newList.push({ id: leftSections[i], col: 'left' });
+                if (i < rightSections.length) newList.push({ id: rightSections[i], col: 'right' });
+            }
+        } else if (child.tagName === 'SECTION' && DEFAULT_SECTION_ORDER.includes(child.id)) {
+            newList.push({ id: child.id, col: 'wide' });
+        }
+    }
+    if (newList.length > 0) prefs.layoutList = newList;
+    saveSectionPrefs(prefs);
+}
+
 function applySectionPreferences() {
     const prefs = loadSectionPrefs();
     const container = document.getElementById('weather-content');
@@ -233,10 +257,36 @@ function injectSectionControls() {
         controls.className = 'section-controls';
         controls.innerHTML = `
             <span class="section-drag-handle" title="Drag to reorder">⠿</span>
+            <button class="section-move-up mobile-only" title="Move up">▲</button>
+            <button class="section-move-down mobile-only" title="Move down">▼</button>
             <button class="section-width-btn" title="${isWide ? 'Single column' : 'Full width'}">${isWide ? '▣' : '◫'}</button>
             <button class="section-min-btn" title="${isMin ? 'Remove section' : 'Minimize section'}">${isMin ? '✕' : '−'}</button>
         `;
         el.prepend(controls);
+
+        // Mobile move up/down — swap in layoutList and re-render
+        // On mobile, flatten all items to 'wide' so they stack cleanly in single column
+        function mobileMove(direction) {
+            const p = loadSectionPrefs();
+            const isMobile = window.innerWidth <= 600;
+
+            // On mobile, temporarily set all to 'wide' for clean single-column layout
+            if (isMobile) {
+                p.layoutList.forEach(item => item.col = 'wide');
+            }
+
+            const idx = p.layoutList.findIndex(x => x.id === id);
+            const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+            if (idx >= 0 && swapIdx >= 0 && swapIdx < p.layoutList.length) {
+                [p.layoutList[idx], p.layoutList[swapIdx]] = [p.layoutList[swapIdx], p.layoutList[idx]];
+            }
+
+            saveSectionPrefs(p);
+            applySectionPreferences();
+        }
+
+        controls.querySelector('.section-move-up').addEventListener('click', () => mobileMove('up'));
+        controls.querySelector('.section-move-down').addEventListener('click', () => mobileMove('down'));
 
         // Width toggle
         controls.querySelector('.section-width-btn').addEventListener('click', () => {
@@ -334,7 +384,7 @@ function initSectionDrag() {
 
     container.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.section-drag-handle');
-        if (!handle) return;
+        if (!handle || document.body.classList.contains('layout-locked')) return;
 
         dragEl = handle.closest('section');
         if (!dragEl || !DEFAULT_SECTION_ORDER.includes(dragEl.id)) return;
@@ -413,28 +463,7 @@ function initSectionDrag() {
         dragEl.style.width = '';
         dragEl.style.zIndex = '';
 
-        // Rebuild layoutList from current DOM state
-        const prefs = loadSectionPrefs();
-        const newList = [];
-        // Walk through all columns-rows and wide sections in order
-        for (const child of container.children) {
-            if (child.classList && child.classList.contains('columns-row')) {
-                const left = child.querySelector('.weather-col:first-child');
-                const right = child.querySelector('.weather-col:last-child');
-                const leftSections = left ? [...left.querySelectorAll('section')].map(s => s.id) : [];
-                const rightSections = right ? [...right.querySelectorAll('section')].map(s => s.id) : [];
-                // Interleave left and right to maintain relative order
-                const maxLen = Math.max(leftSections.length, rightSections.length);
-                for (let i = 0; i < maxLen; i++) {
-                    if (i < leftSections.length) newList.push({ id: leftSections[i], col: 'left' });
-                    if (i < rightSections.length) newList.push({ id: rightSections[i], col: 'right' });
-                }
-            } else if (child.tagName === 'SECTION' && DEFAULT_SECTION_ORDER.includes(child.id)) {
-                newList.push({ id: child.id, col: 'wide' });
-            }
-        }
-        if (newList.length > 0) prefs.layoutList = newList;
-        saveSectionPrefs(prefs);
+        saveLayoutFromDOM();
 
         dragEl = null;
         placeholder = null;
@@ -2201,7 +2230,7 @@ searchForm.addEventListener('submit', async (e) => {
     try {
         const location = await geocode(query);
         setUnitsForCountry(location.country);
-        updateURL(query);
+        updateURL(query, location);
         showWeather(location, query);
         fetchAllWeatherData(location.lat, location.lon);
     } catch (err) {
@@ -2234,38 +2263,87 @@ document.getElementById('time-toggle').addEventListener('click', () => {
     }
 });
 
-// --- URL State ---------------------------------------------------------------
+// --- Layout Lock -------------------------------------------------------------
 
-function updateURL(query) {
-    history.pushState(null, '', `?q=${encodeURIComponent(query)}`);
+function applyLayoutLock() {
+    const locked = localStorage.getItem('layoutLocked') === 'true';
+    document.body.classList.toggle('layout-locked', locked);
+    const btn = document.getElementById('lock-toggle');
+    if (btn) {
+        btn.textContent = locked ? '🔒' : '🔓';
+        btn.title = locked ? 'Unlock layout' : 'Lock layout';
+    }
 }
 
-function getQueryFromURL() {
-    // Support ?q=78258, #78258, and legacy hash
+document.getElementById('lock-toggle').addEventListener('click', () => {
+    const locked = localStorage.getItem('layoutLocked') === 'true';
+    localStorage.setItem('layoutLocked', !locked);
+    applyLayoutLock();
+});
+
+applyLayoutLock();
+
+// --- URL State ---------------------------------------------------------------
+
+function updateURL(query, location) {
+    const params = new URLSearchParams({ q: query });
+    if (location) {
+        params.set('lat', location.lat.toFixed(4));
+        params.set('lon', location.lon.toFixed(4));
+        params.set('name', location.name);
+        params.set('region', location.region || '');
+        params.set('country', location.country || '');
+    }
+    history.pushState(null, '', `?${params}`);
+}
+
+function getLocationFromURL() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('q')) return params.get('q');
-    if (window.location.hash.length > 1) return decodeURIComponent(window.location.hash.slice(1));
-    return '';
+    // If lat/lon are in the URL, use them directly (skip geocoding/picker)
+    if (params.get('lat') && params.get('lon')) {
+        return {
+            query: params.get('q') || '',
+            location: {
+                name: params.get('name') || '',
+                region: params.get('region') || '',
+                country: params.get('country') || '',
+                lat: parseFloat(params.get('lat')),
+                lon: parseFloat(params.get('lon')),
+            }
+        };
+    }
+    // Fallback to just query string
+    if (params.get('q')) return { query: params.get('q'), location: null };
+    if (window.location.hash.length > 1) return { query: decodeURIComponent(window.location.hash.slice(1)), location: null };
+    return null;
+}
+
+async function loadFromURL() {
+    const urlData = getLocationFromURL();
+    if (!urlData) return;
+
+    if (urlData.location) {
+        // Direct lat/lon — skip geocoding entirely
+        setUnitsForCountry(urlData.location.country);
+        showWeather(urlData.location, urlData.query);
+        fetchAllWeatherData(urlData.location.lat, urlData.location.lon);
+    } else if (urlData.query) {
+        searchInput.value = urlData.query;
+        searchForm.dispatchEvent(new Event('submit'));
+    }
 }
 
 window.addEventListener('popstate', () => {
-    const query = getQueryFromURL();
-    if (query) {
-        searchInput.value = query;
-        searchForm.dispatchEvent(new Event('submit'));
+    const urlData = getLocationFromURL();
+    if (urlData) {
+        loadFromURL();
     } else {
         showHome();
     }
 });
 
 // Load from URL on page load
-(function () {
-    const query = getQueryFromURL();
-    if (query) {
-        searchInput.value = query;
-        searchForm.dispatchEvent(new Event('submit'));
-    }
-})();
+loadFromURL();
 
 // Init drag-to-reorder (event delegation, works across re-renders)
 initSectionDrag();

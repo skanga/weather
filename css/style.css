@@ -351,6 +351,21 @@ section:hover .section-controls {
 }
 
 .section-width-btn:hover,
+/* Layout locked — hide all section controls */
+body.layout-locked .section-controls {
+    display: none !important;
+}
+
+body.layout-locked .chart-drag-handle,
+body.layout-locked .chart-min-btn {
+    display: none !important;
+}
+
+/* Mobile-only move buttons — hidden on desktop */
+.mobile-only {
+    display: none;
+}
+
 .section-min-btn:hover {
     color: var(--text);
 }
@@ -543,6 +558,22 @@ body.is-dragging .weather-col:empty {
     .section-width-btn,
     .section-drag-handle {
         display: none;
+    }
+    .mobile-only {
+        display: inline-block;
+    }
+    .section-move-up,
+    .section-move-down {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        padding: 0.1rem 0.3rem;
+    }
+    .section-move-up:hover,
+    .section-move-down:hover {
+        color: var(--text);
     }
 }
 
