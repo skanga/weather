@@ -631,30 +631,30 @@ function initChartDrag() {
 // --- Constants ---------------------------------------------------------------
 
 const WEATHER_DESCRIPTIONS = {
-    0: { text: 'Clear sky', icon: '☀️' },
-    1: { text: 'Mainly clear', icon: '🌤️' },
-    2: { text: 'Partly cloudy', icon: '⛅' },
-    3: { text: 'Overcast', icon: '☁️' },
-    45: { text: 'Foggy', icon: '🌫️' },
-    48: { text: 'Depositing rime fog', icon: '🌫️' },
-    51: { text: 'Light drizzle', icon: '🌦️' },
-    53: { text: 'Moderate drizzle', icon: '🌦️' },
-    55: { text: 'Dense drizzle', icon: '🌦️' },
-    61: { text: 'Slight rain', icon: '🌧️' },
-    63: { text: 'Moderate rain', icon: '🌧️' },
-    65: { text: 'Heavy rain', icon: '🌧️' },
-    71: { text: 'Slight snow', icon: '🌨️' },
-    73: { text: 'Moderate snow', icon: '🌨️' },
-    75: { text: 'Heavy snow', icon: '🌨️' },
-    77: { text: 'Snow grains', icon: '🌨️' },
-    80: { text: 'Slight rain showers', icon: '🌦️' },
-    81: { text: 'Moderate rain showers', icon: '🌦️' },
-    82: { text: 'Violent rain showers', icon: '🌦️' },
-    85: { text: 'Slight snow showers', icon: '🌨️' },
-    86: { text: 'Heavy snow showers', icon: '🌨️' },
-    95: { text: 'Thunderstorm', icon: '⛈️' },
-    96: { text: 'Thunderstorm with slight hail', icon: '⛈️' },
-    99: { text: 'Thunderstorm with heavy hail', icon: '⛈️' },
+    0: { text: 'Clear sky', icon: '☀️', nightIcon: '🌙' },
+    1: { text: 'Mainly clear', icon: '🌤️', nightIcon: '🌙' },
+    2: { text: 'Partly cloudy', icon: '⛅', nightIcon: '☁️' },
+    3: { text: 'Overcast', icon: '☁️', nightIcon: '☁️' },
+    45: { text: 'Foggy', icon: '🌫️', nightIcon: '🌫️' },
+    48: { text: 'Depositing rime fog', icon: '🌫️', nightIcon: '🌫️' },
+    51: { text: 'Light drizzle', icon: '🌦️', nightIcon: '🌧️' },
+    53: { text: 'Moderate drizzle', icon: '🌦️', nightIcon: '🌧️' },
+    55: { text: 'Dense drizzle', icon: '🌦️', nightIcon: '🌧️' },
+    61: { text: 'Slight rain', icon: '🌧️', nightIcon: '🌧️' },
+    63: { text: 'Moderate rain', icon: '🌧️', nightIcon: '🌧️' },
+    65: { text: 'Heavy rain', icon: '🌧️', nightIcon: '🌧️' },
+    71: { text: 'Slight snow', icon: '🌨️', nightIcon: '🌨️' },
+    73: { text: 'Moderate snow', icon: '🌨️', nightIcon: '🌨️' },
+    75: { text: 'Heavy snow', icon: '🌨️', nightIcon: '🌨️' },
+    77: { text: 'Snow grains', icon: '🌨️', nightIcon: '🌨️' },
+    80: { text: 'Slight rain showers', icon: '🌦️', nightIcon: '🌧️' },
+    81: { text: 'Moderate rain showers', icon: '🌦️', nightIcon: '🌧️' },
+    82: { text: 'Violent rain showers', icon: '🌦️', nightIcon: '🌧️' },
+    85: { text: 'Slight snow showers', icon: '🌨️', nightIcon: '🌨️' },
+    86: { text: 'Heavy snow showers', icon: '🌨️', nightIcon: '🌨️' },
+    95: { text: 'Thunderstorm', icon: '⛈️', nightIcon: '⛈️' },
+    96: { text: 'Thunderstorm with slight hail', icon: '⛈️', nightIcon: '⛈️' },
+    99: { text: 'Thunderstorm with heavy hail', icon: '⛈️', nightIcon: '⛈️' },
 };
 
 // --- DOM Refs ----------------------------------------------------------------
@@ -669,8 +669,9 @@ const backBtn = document.getElementById('back-btn');
 
 // --- Utility Functions -------------------------------------------------------
 
-function weatherInfo(code) {
-    return WEATHER_DESCRIPTIONS[code] || { text: 'Unknown', icon: '❓' };
+function weatherInfo(code, isNight) {
+    const desc = WEATHER_DESCRIPTIONS[code] || { text: 'Unknown', icon: '❓', nightIcon: '❓' };
+    return { text: desc.text, icon: isNight ? desc.nightIcon : desc.icon };
 }
 
 function windDirection(degrees) {
@@ -1276,7 +1277,7 @@ function fmtHour(date) {
 }
 
 function renderCurrent(current, airQuality) {
-    const info = weatherInfo(current.weather_code);
+    const info = weatherInfo(current.weather_code, isNightTime());
     const section = document.getElementById('current-section');
     const uvVal = Math.round(current.uv_index);
     const aqi = airQuality ? airQuality.us_aqi : null;
@@ -1460,7 +1461,7 @@ function renderHourly(hourly) {
         const label = units.time24h
             ? hour.toString().padStart(2, '0') + ':00'
             : (hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`);
-        const info = weatherInfo(hourly.weather_code[i]);
+        const info = weatherInfo(hourly.weather_code[i], isHourNight(hourly.time[i]));
         html += `
             <div class="hourly-item">
                 <div>${label}</div>
@@ -2210,6 +2211,19 @@ function getDayOfYear(date) {
 // --- Orchestrator ------------------------------------------------------------
 
 let _lastLat = null, _lastLon = null;
+let _sunriseTime = null, _sunsetTime = null;
+
+function isNightTime(date) {
+    if (!_sunriseTime || !_sunsetTime) return false;
+    const t = date || new Date();
+    return t < _sunriseTime || t > _sunsetTime;
+}
+
+function isHourNight(hourStr) {
+    if (!_sunriseTime || !_sunsetTime) return false;
+    const t = new Date(hourStr);
+    return t < _sunriseTime || t > _sunsetTime;
+}
 
 async function fetchAllWeatherData(lat, lon) {
     _lastLat = lat;
@@ -2233,6 +2247,8 @@ async function fetchAllWeatherData(lat, lon) {
 
         document.getElementById('weather-summary').textContent =
             generateSummary(meteo.current, meteo.hourly, meteo.daily);
+        _sunriseTime = new Date(meteo.daily.sunrise[0]);
+        _sunsetTime = new Date(meteo.daily.sunset[0]);
         renderCurrent(meteo.current, airQuality);
         renderPollen(airQuality, lat, lon);
         renderHourly(meteo.hourly);
