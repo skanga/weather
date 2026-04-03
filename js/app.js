@@ -2237,33 +2237,53 @@ async function fetchAllWeatherData(lat, lon) {
     document.getElementById('details-section').innerHTML = '';
     document.getElementById('hourly-section').innerHTML = '';
     document.getElementById('daily-section').innerHTML = '';
-    document.getElementById('radar-section').innerHTML = '';
+    document.getElementById('radar-section').innerHTML = '<h2>Radar</h2><div class="loading">Loading...</div>';
     document.getElementById('sun-section').innerHTML = '';
     document.getElementById('moon-section').innerHTML = '';
 
-    try {
-        const [meteo, alerts, airQuality] = await Promise.all([
-            fetchOpenMeteo(lat, lon),
-            fetchAlerts(lat, lon),
-            fetchAirQuality(lat, lon),
-        ]);
+    // Fire all API calls in parallel, render each section as its data arrives
 
-        document.getElementById('weather-summary').textContent =
-            generateSummary(meteo.current, meteo.hourly, meteo.daily);
+    // Weather data — renders most of the page
+    const meteoPromise = fetchOpenMeteo(lat, lon).then(meteo => {
         _sunriseTime = new Date(meteo.daily.sunrise[0]);
         _sunsetTime = new Date(meteo.daily.sunset[0]);
-        renderCurrent(meteo.current, airQuality);
-        renderPollen(airQuality, lat, lon);
+        document.getElementById('weather-summary').textContent =
+            generateSummary(meteo.current, meteo.hourly, meteo.daily);
+        renderCurrent(meteo.current, null); // AQI added later when it arrives
         renderHourly(meteo.hourly);
         renderDaily(meteo.daily, meteo.hourly);
-        renderAlerts(alerts);
-        renderRadar(lat, lon);
         renderSunMoon(meteo.daily, lat, lon, meteo.utc_offset_seconds);
         applySectionPreferences();
-    } catch (err) {
+        return meteo;
+    }).catch(() => {
         document.getElementById('current-section').innerHTML =
             `<p class="error">Failed to load weather data. Please try again.</p>`;
-    }
+        return null;
+    });
+
+    // AQI + Pollen — update current conditions and pollen when ready
+    fetchAirQuality(lat, lon).then(airQuality => {
+        meteoPromise.then(meteo => {
+            if (meteo && airQuality) {
+                renderCurrent(meteo.current, airQuality);
+                applySectionPreferences();
+            }
+            renderPollen(airQuality, lat, lon);
+            applySectionPreferences();
+        });
+    }).catch(() => {});
+
+    // Alerts — render independently
+    fetchAlerts(lat, lon).then(alerts => {
+        renderAlerts(alerts);
+        applySectionPreferences();
+    }).catch(() => {});
+
+    // Radar — render independently (has its own loading state)
+    meteoPromise.then(() => {
+        renderRadar(lat, lon);
+        applySectionPreferences();
+    });
 }
 
 // --- Navigation & Event Listeners --------------------------------------------
