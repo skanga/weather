@@ -1,0 +1,85 @@
+# NoAdsWeather
+
+**Weather without the clutter.** [noadsweather.com](https://noadsweather.com)
+
+A fast, ad-free, privacy-respecting weather website. No tracking, no cookies, no bloat. Just weather.
+
+## Why?
+
+Weather websites are some of the most bloated pages on the internet. A typical weather page loads 6-12MB of JavaScript, tracking scripts, and ads just to show you the temperature. NoAdsWeather loads in under 530KB total — that's 10-20x lighter.
+
+## Features
+
+- Current conditions with feels-like, humidity, dew point, wind, gusts, UV index, and air quality
+- Pollen data (Google Pollen API for non-European locations, Open-Meteo for Europe)
+- 24-hour hourly forecast
+- 10-day forecast with interactive charts (temperature, humidity/cloud/pressure, precipitation, wind)
+- Animated weather radar with play/pause and speed controls
+- Sunrise, sunset, solar noon, moonrise, moonset, and moon phase
+- NWS severe weather alerts (US)
+- Weather summary sentence generated from forecast data
+- Dark mode (auto-detects OS preference, manual toggle)
+- Fahrenheit/Celsius and 12H/24H toggles (auto-detects from country)
+- Customizable layout — drag to reorder sections, resize, minimize, or hide any section
+- Bookmarkable URLs with direct lat/lon for instant loading
+- Installable as a PWA (Progressive Web App)
+- International postal code support (60+ countries)
+- Zero cookies, zero tracking, zero analytics
+
+## Tech Stack
+
+- **Frontend:** Plain HTML, CSS, vanilla JavaScript — no frameworks, no build step, no npm
+- **Hosting:** GitHub Pages (free)
+- **Weather data:** [Open-Meteo API](https://open-meteo.com/) (free, no API key)
+- **Radar:** [RainViewer API](https://www.rainviewer.com/api.html) (free) + [CartoDB](https://carto.com/basemaps/) map tiles
+- **Alerts:** [NWS API](https://www.weather.gov/documentation/services-web-api) (free, US only)
+- **Air quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (free)
+- **Pollen:** [Google Pollen API](https://developers.google.com/maps/documentation/pollen) via Cloud Run proxy
+- **Postal codes:** [Zippopotam](https://api.zippopotam.us/) (free, 60+ countries)
+
+## Running Locally
+
+No build step required. Just serve the files:
+
+```bash
+npx http-server . -p 8080
+```
+
+Then open `http://localhost:8080`.
+
+## Project Structure
+
+```
+index.html          — Single page with all HTML structure
+css/style.css       — All styles with CSS custom properties for theming
+js/app.js           — All application logic (~2100 lines)
+js/app-commented.js — Fully commented version of app.js
+CNAME               — Custom domain config for GitHub Pages
+.nojekyll           — Tells GitHub Pages to skip Jekyll processing
+LICENSE             — MIT License
+```
+
+## How It Works
+
+1. User searches a city name or postal code
+2. Geocoding converts the search to lat/lon coordinates (Open-Meteo for cities, Zippopotam for postal codes)
+3. All weather APIs are called in parallel from the browser — no backend needed
+4. Sections render progressively as each API responds
+5. User preferences (layout, units, theme) are saved in localStorage
+6. Pollen data is fetched on-demand through a Cloud Run proxy to keep the API key private
+
+## Cost
+
+- **Domain:** ~$10/year
+- **Hosting:** Free (GitHub Pages)
+- **APIs:** Free (Open-Meteo, RainViewer, NWS, Zippopotam)
+- **Pollen proxy:** Free tier (Google Cloud Run)
+- **Total:** ~$10/year
+
+## License
+
+MIT — see [LICENSE](LICENSE)
+
+## Support
+
+If you find this useful, consider [supporting us on Ko-fi](https://ko-fi.com/noadsdude).
