@@ -717,7 +717,13 @@ function getMoonPhase(date) {
 
 const TEMP_COLOR_THRESHOLD = 5; // °F — don't colorize if range is less than this
 
+function getSettingsBool(key) {
+    const v = localStorage.getItem(key);
+    return v === null ? true : v === 'true';
+}
+
 function tempBackground(avg, minAvg, avgRange) {
+    if (!getSettingsBool('showForecastColors')) return 'transparent';
     if (avgRange < TEMP_COLOR_THRESHOLD) return 'transparent';
     const t = (avg - minAvg) / avgRange;
     if (isDarkMode()) {
@@ -2374,6 +2380,86 @@ document.getElementById('lock-toggle').addEventListener('click', () => {
 
 applyLayoutLock();
 
+// --- Settings Popover --------------------------------------------------------
+
+function applySettings() {
+    const showColors = getSettingsBool('showForecastColors');
+    const showSupport = getSettingsBool('showSupportBtn');
+    const showSummary = getSettingsBool('showWeatherSummary');
+
+    // Forecast colors
+    if (showColors) {
+        updateDayBackgrounds();
+    } else {
+        document.querySelectorAll('.forecast-day').forEach(el => {
+            el.style.background = 'transparent';
+        });
+    }
+
+    // Support button
+    const donateBtn = document.getElementById('donate-btn');
+    if (donateBtn) donateBtn.style.display = showSupport ? '' : 'none';
+
+    // Weather summary
+    const summary = document.getElementById('weather-summary');
+    if (summary) summary.style.display = showSummary ? '' : 'none';
+
+    // Theme toggle button
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) themeBtn.style.display = getSettingsBool('showThemeToggle') ? '' : 'none';
+
+    // Sync checkboxes
+    document.querySelectorAll('#settings-popover input[data-setting]').forEach(cb => {
+        cb.checked = getSettingsBool(cb.dataset.setting);
+    });
+}
+
+// Toggle popover
+document.getElementById('settings-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const popover = document.getElementById('settings-popover');
+    popover.hidden = !popover.hidden;
+});
+
+// Prevent clicks inside popover from closing it
+document.getElementById('settings-popover').addEventListener('click', (e) => {
+    e.stopPropagation();
+});
+
+// Close on outside click
+document.addEventListener('click', () => {
+    document.getElementById('settings-popover').hidden = true;
+});
+
+// Close on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('settings-popover').hidden = true;
+});
+
+// Checkbox handlers
+document.querySelectorAll('#settings-popover input[data-setting]').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+        localStorage.setItem(e.target.dataset.setting, e.target.checked);
+        applySettings();
+    });
+});
+
+// Revert to defaults
+document.getElementById('settings-revert').addEventListener('click', () => {
+    localStorage.setItem('showForecastColors', 'true');
+    localStorage.setItem('showSupportBtn', 'true');
+    localStorage.setItem('showWeatherSummary', 'true');
+    localStorage.setItem('showThemeToggle', 'true');
+    localStorage.removeItem('sectionPrefs');
+    applySettings();
+    if (_lastLat !== null) {
+        fetchAllWeatherData(_lastLat, _lastLon);
+    }
+});
+
+// Apply on page load
+applySettings();
+
 // --- URL State ---------------------------------------------------------------
 
 function updateURL(query, location) {
@@ -2475,6 +2561,7 @@ initChartDrag();
         toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
         localStorage.setItem('theme', theme);
         updateDayBackgrounds();
+        applySettings();
         if (_lastLat !== null) renderRadar(_lastLat, _lastLon);
     }
 
@@ -2490,15 +2577,6 @@ initChartDrag();
         setTheme(current === 'dark' ? 'light' : 'dark');
     });
 })();
-
-// --- Restore Defaults --------------------------------------------------------
-
-document.getElementById('restore-defaults').addEventListener('click', () => {
-    localStorage.removeItem('sectionPrefs');
-    if (_lastLat !== null) {
-        fetchAllWeatherData(_lastLat, _lastLon);
-    }
-});
 
 // --- Privacy Panel -----------------------------------------------------------
 

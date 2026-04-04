@@ -43,6 +43,15 @@
                 <button id="units-toggle" class="units-toggle">°C</button>
                 <button id="time-toggle" class="units-toggle">24H</button>
                 <button id="lock-toggle" class="units-toggle" title="Lock layout">🔓</button>
+                <button id="settings-toggle" class="units-toggle" title="Settings">⚙️</button>
+                <!-- Settings popover (hidden by default) -->
+                <div id="settings-popover" hidden>
+                    <label><input type="checkbox" id="setting-forecast-colors" data-setting="showForecastColors" checked> Show color backgrounds on 10-day forecast</label>
+                    <label><input type="checkbox" id="setting-support-btn" data-setting="showSupportBtn" checked> Show Annoying Donate Button</label>
+                    <label><input type="checkbox" id="setting-weather-summary" data-setting="showWeatherSummary" checked> Show weather summary</label>
+                    <label><input type="checkbox" id="setting-theme-toggle" data-setting="showThemeToggle" checked> Show Light Mode / Dark Mode button</label>
+                    <button id="settings-revert" class="settings-revert-btn">Restore Default Layout</button>
+                </div>
             </div>
         </header>
         <main id="weather-content">
@@ -81,9 +90,7 @@
     </div>
 
     <!-- Theme toggle + restore defaults -->
-    <button id="restore-defaults" aria-label="Restore default layout" title="Restore default layout">↺</button>
     <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
-
     <!-- Floating donate button -->
     <a id="donate-btn" href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener">
         Support this site
