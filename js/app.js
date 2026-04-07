@@ -1997,8 +1997,11 @@ async function loadRadar(lat, lon) {
         }
         preloadNext();
 
+        let firstLoop = true;
+
         function startAnimation() {
             if (radarInterval) clearInterval(radarInterval);
+            const speed = firstLoop ? speeds[1] : speeds[speedIdx]; // 0.5x on first loop
             radarInterval = setInterval(() => {
                 if (paused) return;
                 allFrameEls[currentFrame].style.opacity = '0';
@@ -2006,7 +2009,12 @@ async function loadRadar(lat, lon) {
                 loadFrame(allFrameEls[currentFrame]);
                 allFrameEls[currentFrame].style.opacity = '1';
                 showFrameTime(frames[currentFrame]);
-            }, speeds[speedIdx]);
+                // After completing first loop, switch to user's speed
+                if (firstLoop && currentFrame === frames.length - 1) {
+                    firstLoop = false;
+                    startAnimation();
+                }
+            }, speed);
         }
 
         function updateSpeedLabel() {
