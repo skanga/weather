@@ -40,8 +40,8 @@
             <div class="weather-toolbar">
                 <button id="back-btn" aria-label="Back to search">&larr; Back</button>
                 <div class="weather-toggles">
-                    <button id="units-toggle" class="units-toggle">°C</button>
-                    <button id="time-toggle" class="units-toggle">24H</button>
+                    <button id="units-toggle" class="units-toggle">°F</button>
+                    <button id="time-toggle" class="units-toggle">12H</button>
                     <button id="lock-toggle" class="units-toggle" title="Lock layout">🔓</button>
                     <button id="settings-toggle" class="units-toggle" title="Settings">⚙️</button>
                     <!-- Settings popover (hidden by default) -->
@@ -50,6 +50,10 @@
                         <label><input type="checkbox" id="setting-support-btn" data-setting="showSupportBtn" checked> Show Annoying Support Button</label>
                         <label><input type="checkbox" id="setting-weather-summary" data-setting="showWeatherSummary" checked> Show weather summary</label>
                         <label><input type="checkbox" id="setting-theme-toggle" data-setting="showThemeToggle" checked> Show Light Mode / Dark Mode button</label>
+                        <label><input type="checkbox" id="setting-units-btn" data-setting="showUnitsBtn" checked> Show °C / °F button</label>
+                        <label><input type="checkbox" id="setting-time-btn" data-setting="showTimeBtn" checked> Show 12H / 24H button</label>
+                        <label><input type="checkbox" id="setting-lock-btn" data-setting="showLockBtn" checked> Show Lock / Unlock button</label>
+                        <label><input type="checkbox" id="setting-nws-link" data-setting="showNwsLink" checked> Show NWS Radar link</label>
                         <button id="settings-revert" class="settings-revert-btn">Restore Default Layout</button>
                     </div>
                 </div>

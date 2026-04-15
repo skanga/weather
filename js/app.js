@@ -57,9 +57,9 @@ function toggleUnits() {
 
 function updateUnitsToggleLabel() {
     const btn = document.getElementById('units-toggle');
-    if (btn) btn.textContent = isImperial() ? '°C' : '°F';
+    if (btn) btn.textContent = isImperial() ? '°F' : '°C';
     const timeBtn = document.getElementById('time-toggle');
-    if (timeBtn) timeBtn.textContent = units.time24h ? '12H' : '24H';
+    if (timeBtn) timeBtn.textContent = units.time24h ? '24H' : '12H';
 }
 
 function tempUnit() { return isImperial() ? '°F' : '°C'; }
@@ -1853,8 +1853,30 @@ function renderRadar(lat, lon) {
     if (radarInterval) { clearInterval(radarInterval); radarInterval = null; }
 
     const section = document.getElementById('radar-section');
+    // Check if location is within NWS radar coverage (US territories)
+    const inNwsCoverage =
+        (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) ||  // CONUS
+        (lat >= 51 && lat <= 72 && lon >= -180 && lon <= -130) || // Alaska
+        (lat >= 18 && lat <= 23 && lon >= -161 && lon <= -154) || // Hawaii
+        (lat >= 17 && lat <= 19 && lon >= -68 && lon <= -64) ||   // Puerto Rico / USVI
+        (lat >= 13 && lat <= 14 && lon >= 144 && lon <= 145);     // Guam
+
+    let nwsLink = '';
+    if (inNwsCoverage) {
+        const settings = {
+            agenda: { id: null, center: [lon, lat], location: null, zoom: 8 },
+            animating: false,
+            base: 'standard',
+            artcc: false, county: false, cwa: false, rfc: false, state: true,
+            menu: true, shortFusedOnly: false,
+            opacity: { alerts: 0.8, local: 0.6, localStations: 0.8, national: 0.6 }
+        };
+        const url = `https://radar.weather.gov/?settings=v1_${encodeURIComponent(btoa(JSON.stringify(settings)))}`;
+        nwsLink = `<a href="${url}" target="_blank" rel="noopener" class="nws-radar-link" title="Open this location on NWS radar">NWS radar ↗</a>`;
+    }
+
     section.innerHTML = `
-        <h2>Radar <button id="radar-refresh" class="radar-refresh-btn" title="Refresh radar">↻</button></h2>
+        <h2>Radar <button id="radar-refresh" class="radar-refresh-btn" title="Refresh radar">↻</button>${nwsLink}</h2>
         <div id="radar-container" style="position:relative;width:100%;aspect-ratio:1;background:#1a1a2e;border-radius:8px;overflow:hidden;">
             <div class="loading" style="color:#9ca3af;">Loading radar...</div>
         </div>
@@ -2449,6 +2471,18 @@ function applySettings() {
     const themeBtn = document.getElementById('theme-toggle');
     if (themeBtn) themeBtn.style.display = getSettingsBool('showThemeToggle') ? '' : 'none';
 
+    // Header toggle buttons
+    const unitsBtn = document.getElementById('units-toggle');
+    if (unitsBtn) unitsBtn.style.display = getSettingsBool('showUnitsBtn') ? '' : 'none';
+    const timeBtn = document.getElementById('time-toggle');
+    if (timeBtn) timeBtn.style.display = getSettingsBool('showTimeBtn') ? '' : 'none';
+    const lockBtn = document.getElementById('lock-toggle');
+    if (lockBtn) lockBtn.style.display = getSettingsBool('showLockBtn') ? '' : 'none';
+
+    // NWS radar link
+    const nwsLink = document.querySelector('.nws-radar-link');
+    if (nwsLink) nwsLink.style.display = getSettingsBool('showNwsLink') ? '' : 'none';
+
     // Sync checkboxes
     document.querySelectorAll('#settings-popover input[data-setting]').forEach(cb => {
         cb.checked = getSettingsBool(cb.dataset.setting);
@@ -2490,6 +2524,10 @@ document.getElementById('settings-revert').addEventListener('click', () => {
     localStorage.setItem('showSupportBtn', 'true');
     localStorage.setItem('showWeatherSummary', 'true');
     localStorage.setItem('showThemeToggle', 'true');
+    localStorage.setItem('showUnitsBtn', 'true');
+    localStorage.setItem('showTimeBtn', 'true');
+    localStorage.setItem('showLockBtn', 'true');
+    localStorage.setItem('showNwsLink', 'true');
     localStorage.removeItem('sectionPrefs');
     applySettings();
     if (_lastLat !== null) {

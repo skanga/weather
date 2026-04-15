@@ -531,6 +531,7 @@ section h2 {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 0.75rem;
+    position: relative;
 }
 
 /* Alerts */
@@ -976,6 +977,24 @@ body.is-dragging .weather-col:empty {
 .radar-refresh-btn:hover {
     color: var(--text);
     transform: rotate(180deg);
+}
+
+.nws-radar-link {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-decoration: none;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.nws-radar-link:hover {
+    color: var(--accent);
+    text-decoration: underline;
 }
 
 .radar-controls {
