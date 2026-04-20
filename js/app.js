@@ -858,6 +858,20 @@ const EIRCODE_ROUTING = {
     Y25:'Gorey',Y34:'New Ross',Y35:'Wexford',
 };
 
+// Countries covered by MeteoAlarm — alerts currently not shown for these
+// (MeteoAlarm integration planned for future)
+const METEOALARM_COUNTRIES = new Set([
+    'Austria', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia',
+    'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France',
+    'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Israel', 'Italy',
+    'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 'Montenegro',
+    'Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal',
+    'Romania', 'Serbia', 'Slovakia', 'Slovenia', 'Spain', 'Sweden',
+    'Switzerland', 'Ukraine', 'United Kingdom'
+]);
+
+const ALERTS_PROXY_URL = 'https://alerts-proxy-ssdjubgioq-uc.a.run.app/';
+
 async function geocodePostal(code, countryCode, countryName) {
     // Ireland: Zippopotam doesn't support Eircodes — use routing key lookup + Open-Meteo
     if (countryCode === 'ie') {
@@ -1165,7 +1179,7 @@ function pollenSummary(aq) {
     }));
 }
 
-async function fetchAlerts(lat, lon) {
+async function fetchNWSAlerts(lat, lon) {
     try {
         const res = await fetch(
             `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
@@ -1177,6 +1191,27 @@ async function fetchAlerts(lat, lon) {
     } catch {
         return [];
     }
+}
+
+async function fetchOWMAlerts(lat, lon) {
+    try {
+        const res = await fetch(ALERTS_PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat, lon })
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.features || [];
+    } catch {
+        return [];
+    }
+}
+
+async function fetchAlerts(lat, lon, country) {
+    if (country === 'United States') return fetchNWSAlerts(lat, lon);
+    if (METEOALARM_COUNTRIES.has(country)) return []; // MeteoAlarm coverage — future
+    return fetchOWMAlerts(lat, lon);
 }
 
 // --- Render Functions --------------------------------------------------------
@@ -2288,7 +2323,7 @@ function getDayOfYear(date) {
 
 // --- Orchestrator ------------------------------------------------------------
 
-let _lastLat = null, _lastLon = null;
+let _lastLat = null, _lastLon = null, _lastCountry = null;
 let _sunriseTime = null, _sunsetTime = null;
 
 function isNightTime(date) {
@@ -2303,9 +2338,10 @@ function isHourNight(hourStr) {
     return t < _sunriseTime || t > _sunsetTime;
 }
 
-async function fetchAllWeatherData(lat, lon) {
+async function fetchAllWeatherData(lat, lon, country) {
     _lastLat = lat;
     _lastLon = lon;
+    _lastCountry = country || _lastCountry || '';
     document.getElementById('alerts-section').hidden = true;
     document.getElementById('weather-summary').textContent = '';
     document.getElementById('current-section').innerHTML = '<div class="loading">Loading...</div>';
@@ -2349,7 +2385,7 @@ async function fetchAllWeatherData(lat, lon) {
     }).catch(() => {});
 
     // Alerts — render independently
-    fetchAlerts(lat, lon).then(alerts => {
+    fetchAlerts(lat, lon, _lastCountry).then(alerts => {
         renderAlerts(alerts);
         applySectionPreferences();
     }).catch(() => {});
@@ -2398,7 +2434,7 @@ searchForm.addEventListener('submit', async (e) => {
         setUnitsForCountry(location.country);
         updateURL(query, location);
         showWeather(location, query);
-        fetchAllWeatherData(location.lat, location.lon);
+        fetchAllWeatherData(location.lat, location.lon, location.country);
     } catch (err) {
         searchError.textContent = err.message;
         searchError.hidden = false;
@@ -2416,7 +2452,7 @@ backBtn.addEventListener('click', () => {
 document.getElementById('units-toggle').addEventListener('click', () => {
     toggleUnits();
     if (_lastLat !== null) {
-        fetchAllWeatherData(_lastLat, _lastLon);
+        fetchAllWeatherData(_lastLat, _lastLon, _lastCountry);
     }
 });
 
@@ -2425,7 +2461,7 @@ document.getElementById('time-toggle').addEventListener('click', () => {
     updateUnitsToggleLabel();
     saveUnitsPref();
     if (_lastLat !== null) {
-        fetchAllWeatherData(_lastLat, _lastLon);
+        fetchAllWeatherData(_lastLat, _lastLon, _lastCountry);
     }
 });
 
@@ -2545,7 +2581,7 @@ document.getElementById('settings-revert').addEventListener('click', () => {
     localStorage.removeItem('sectionPrefs');
     applySettings();
     if (_lastLat !== null) {
-        fetchAllWeatherData(_lastLat, _lastLon);
+        fetchAllWeatherData(_lastLat, _lastLon, _lastCountry);
     }
 });
 
@@ -2595,7 +2631,7 @@ async function loadFromURL() {
         // Direct lat/lon — skip geocoding entirely
         setUnitsForCountry(urlData.location.country);
         showWeather(urlData.location, urlData.query);
-        fetchAllWeatherData(urlData.location.lat, urlData.location.lon);
+        fetchAllWeatherData(urlData.location.lat, urlData.location.lon, urlData.location.country);
     } else if (urlData.query) {
         searchInput.value = urlData.query;
         searchForm.dispatchEvent(new Event('submit'));
