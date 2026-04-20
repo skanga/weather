@@ -376,18 +376,43 @@ body.layout-locked .chart-min-btn {
     display: none !important;
 }
 
-/* Settings popover */
+/* Settings toggle (floating, bottom-left next to theme toggle) */
+#settings-toggle {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 4rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 1000;
+    transition: background 0.2s;
+}
+
+#settings-toggle:hover {
+    background: var(--btn-hover-bg);
+}
+
+/* Settings popover (floats above the settings button) */
 #settings-popover {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 0.25rem;
+    position: fixed;
+    bottom: 4rem;
+    left: 1.5rem;
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 0.75rem 1rem;
     min-width: 260px;
-    max-width: calc(100vw - 2rem);
+    max-width: calc(100vw - 3rem);
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     z-index: 1002;
     font-size: 0.85rem;
@@ -1068,4 +1093,85 @@ body.is-dragging .weather-col:empty {
     #search-form {
         flex-direction: column;
     }
+}
+
+/* --- Language UI ---------------------------------------------------------- */
+.settings-language-btn {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 0.5rem;
+}
+.settings-language-btn:hover {
+    background: var(--btn-hover-bg);
+}
+
+.language-popover {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    min-width: 280px;
+    max-width: 320px;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    z-index: 1003;
+    color: var(--text);
+}
+.language-popover h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    text-align: center;
+}
+.language-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.language-option:hover {
+    background: var(--btn-hover-bg);
+}
+.language-option input[type="radio"] {
+    margin: 0;
+}
+.language-option img.lang-flag,
+.language-option .lang-flags img {
+    width: 24px;
+    height: auto;
+    flex-shrink: 0;
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+}
+.language-option .lang-flags {
+    display: inline-flex;
+    gap: 2px;
+}
+.language-option .lang-name {
+    font-size: 0.9rem;
+}
+.lang-btn-flag {
+    width: 18px;
+    height: auto;
+    vertical-align: middle;
+    margin: 0 0.15rem;
 }

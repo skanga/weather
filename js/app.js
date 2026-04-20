@@ -101,15 +101,18 @@ const DEFAULT_LAYOUT_LIST = [
 const DEFAULT_CHART_ORDER = ['chart-temp', 'chart-atmos', 'chart-precip', 'chart-wind'];
 const DEFAULT_WIDE_SECTIONS = ['daily-section', 'hourly-section'];
 
-const SECTION_NAMES = {
-    'current-section': 'Current Conditions',
-    'details-section': 'Pollen',
-    'hourly-section': 'Hourly Forecast',
-    'daily-section': '10-Day Forecast',
-    'radar-section': 'Radar',
-    'sun-section': 'Sun',
-    'moon-section': 'Moon',
-};
+function sectionName(id) {
+    const keyMap = {
+        'current-section': 'currentConditions',
+        'details-section': 'pollen',
+        'hourly-section': 'hourlyForecast',
+        'daily-section': 'tenDayForecast',
+        'radar-section': 'radar',
+        'sun-section': 'sun',
+        'moon-section': 'moon'
+    };
+    return t(keyMap[id] || id);
+}
 
 // Sections that always span 2 columns
 
@@ -246,7 +249,7 @@ function injectSectionControls() {
     for (const id of DEFAULT_SECTION_ORDER) {
         const el = document.getElementById(id);
         if (!el || el.style.display === 'none') continue;
-        el.setAttribute('data-section-name', SECTION_NAMES[id] || id);
+        el.setAttribute('data-section-name', sectionName(id));
         const old = el.querySelector('.section-controls');
         if (old) old.remove();
 
@@ -256,11 +259,11 @@ function injectSectionControls() {
         const controls = document.createElement('div');
         controls.className = 'section-controls';
         controls.innerHTML = `
-            <span class="section-drag-handle" title="Drag to reorder">⠿</span>
-            <button class="section-move-up mobile-only" title="Move up">▲</button>
-            <button class="section-move-down mobile-only" title="Move down">▼</button>
-            <button class="section-width-btn" title="${isWide ? 'Single column' : 'Full width'}">${isWide ? '▣' : '◫'}</button>
-            <button class="section-min-btn" title="${isMin ? 'Remove section' : 'Minimize section'}">${isMin ? '✕' : '−'}</button>
+            <span class="section-drag-handle" title="${t('dragToReorder')}">⠿</span>
+            <button class="section-move-up mobile-only" title="${t('moveUp')}">▲</button>
+            <button class="section-move-down mobile-only" title="${t('moveDown')}">▼</button>
+            <button class="section-width-btn" title="${isWide ? t('singleColumn') : t('fullWidth')}">${isWide ? '▣' : '◫'}</button>
+            <button class="section-min-btn" title="${isMin ? t('removeSection') : t('minimizeSection')}">${isMin ? '✕' : '−'}</button>
         `;
         el.prepend(controls);
 
@@ -316,7 +319,7 @@ function injectSectionControls() {
                 if (!p.minimized.includes(id)) p.minimized.push(id);
                 saveSectionPrefs(p);
                 controls.querySelector('.section-min-btn').textContent = '✕';
-                controls.querySelector('.section-min-btn').title = 'Remove section';
+                controls.querySelector('.section-min-btn').title = t('removeSection');
             }
         });
 
@@ -331,7 +334,7 @@ function injectSectionControls() {
                 p.minimized = p.minimized.filter(x => x !== id);
                 saveSectionPrefs(p);
                 const btn = el.querySelector('.section-min-btn');
-                if (btn) { btn.textContent = '−'; btn.title = 'Minimize section'; }
+                if (btn) { btn.textContent = '−'; btn.title = t('minimizeSection'); }
             });
         }
     }
@@ -354,7 +357,7 @@ function renderHiddenSectionsBar() {
     }
 
     bar.innerHTML = prefs.hidden.map(id =>
-        `<button class="show-section-btn" data-id="${id}">Show ${SECTION_NAMES[id] || id}</button>`
+        `<button class="show-section-btn" data-id="${id}">${t('showSectionPrefix', { name: sectionName(id) })}</button>`
     ).join(' ');
 
     bar.querySelectorAll('.show-section-btn').forEach(btn => {
@@ -518,12 +521,15 @@ function applyChartOrder(chartOrder) {
     });
 }
 
-const CHART_NAMES = {
-    'chart-temp': 'Temperature',
-    'chart-atmos': 'Cloud/Humidity/Pressure',
-    'chart-precip': 'Precipitation',
-    'chart-wind': 'Wind',
-};
+function chartName(id) {
+    const keyMap = {
+        'chart-temp': 'chartTemperature',
+        'chart-atmos': 'chartCloudCover',
+        'chart-precip': 'chartPrecipChance',
+        'chart-wind': 'chartWindSpeed'
+    };
+    return t(keyMap[id] || id);
+}
 
 function renderHiddenChartsBar() {
     const section = document.getElementById('daily-section');
@@ -546,7 +552,7 @@ function renderHiddenChartsBar() {
     }
 
     bar.innerHTML = prefs.hiddenCharts.map(id =>
-        `<button class="show-section-btn" data-id="${id}">Show ${CHART_NAMES[id] || id}</button>`
+        `<button class="show-section-btn" data-id="${id}">${t('showSectionPrefix', { name: chartName(id) })}</button>`
     ).join(' ');
 
     bar.querySelectorAll('.show-section-btn').forEach(btn => {
@@ -639,31 +645,31 @@ function initChartDrag() {
 
 // --- Constants ---------------------------------------------------------------
 
-const WEATHER_DESCRIPTIONS = {
-    0: { text: 'Clear sky', icon: '☀️', nightIcon: '🌙' },
-    1: { text: 'Mainly clear', icon: '🌤️', nightIcon: '🌙' },
-    2: { text: 'Partly cloudy', icon: '⛅', nightIcon: '☁️' },
-    3: { text: 'Overcast', icon: '☁️', nightIcon: '☁️' },
-    45: { text: 'Foggy', icon: '🌫️', nightIcon: '🌫️' },
-    48: { text: 'Depositing rime fog', icon: '🌫️', nightIcon: '🌫️' },
-    51: { text: 'Light drizzle', icon: '🌦️', nightIcon: '🌧️' },
-    53: { text: 'Moderate drizzle', icon: '🌦️', nightIcon: '🌧️' },
-    55: { text: 'Dense drizzle', icon: '🌦️', nightIcon: '🌧️' },
-    61: { text: 'Slight rain', icon: '🌧️', nightIcon: '🌧️' },
-    63: { text: 'Moderate rain', icon: '🌧️', nightIcon: '🌧️' },
-    65: { text: 'Heavy rain', icon: '🌧️', nightIcon: '🌧️' },
-    71: { text: 'Slight snow', icon: '🌨️', nightIcon: '🌨️' },
-    73: { text: 'Moderate snow', icon: '🌨️', nightIcon: '🌨️' },
-    75: { text: 'Heavy snow', icon: '🌨️', nightIcon: '🌨️' },
-    77: { text: 'Snow grains', icon: '🌨️', nightIcon: '🌨️' },
-    80: { text: 'Slight rain showers', icon: '🌦️', nightIcon: '🌧️' },
-    81: { text: 'Moderate rain showers', icon: '🌦️', nightIcon: '🌧️' },
-    82: { text: 'Violent rain showers', icon: '🌦️', nightIcon: '🌧️' },
-    85: { text: 'Slight snow showers', icon: '🌨️', nightIcon: '🌨️' },
-    86: { text: 'Heavy snow showers', icon: '🌨️', nightIcon: '🌨️' },
-    95: { text: 'Thunderstorm', icon: '⛈️', nightIcon: '⛈️' },
-    96: { text: 'Thunderstorm with slight hail', icon: '⛈️', nightIcon: '⛈️' },
-    99: { text: 'Thunderstorm with heavy hail', icon: '⛈️', nightIcon: '⛈️' },
+const WEATHER_ICONS = {
+    0: { icon: '☀️', nightIcon: '🌙' },
+    1: { icon: '🌤️', nightIcon: '🌙' },
+    2: { icon: '⛅', nightIcon: '☁️' },
+    3: { icon: '☁️', nightIcon: '☁️' },
+    45: { icon: '🌫️', nightIcon: '🌫️' },
+    48: { icon: '🌫️', nightIcon: '🌫️' },
+    51: { icon: '🌦️', nightIcon: '🌧️' },
+    53: { icon: '🌦️', nightIcon: '🌧️' },
+    55: { icon: '🌦️', nightIcon: '🌧️' },
+    61: { icon: '🌧️', nightIcon: '🌧️' },
+    63: { icon: '🌧️', nightIcon: '🌧️' },
+    65: { icon: '🌧️', nightIcon: '🌧️' },
+    71: { icon: '🌨️', nightIcon: '🌨️' },
+    73: { icon: '🌨️', nightIcon: '🌨️' },
+    75: { icon: '🌨️', nightIcon: '🌨️' },
+    77: { icon: '🌨️', nightIcon: '🌨️' },
+    80: { icon: '🌦️', nightIcon: '🌧️' },
+    81: { icon: '🌦️', nightIcon: '🌧️' },
+    82: { icon: '🌦️', nightIcon: '🌧️' },
+    85: { icon: '🌨️', nightIcon: '🌨️' },
+    86: { icon: '🌨️', nightIcon: '🌨️' },
+    95: { icon: '⛈️', nightIcon: '⛈️' },
+    96: { icon: '⛈️', nightIcon: '⛈️' },
+    99: { icon: '⛈️', nightIcon: '⛈️' }
 };
 
 // --- DOM Refs ----------------------------------------------------------------
@@ -676,11 +682,32 @@ const searchError = document.getElementById('search-error');
 const locationName = document.getElementById('location-name');
 const backBtn = document.getElementById('back-btn');
 
+// --- i18n --------------------------------------------------------------------
+
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        const attr = el.dataset.i18nAttr;
+        const text = t(key);
+        if (attr) el.setAttribute(attr, text);
+        else el.textContent = text;
+    });
+    const lang = getCurrentLang();
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+    const disclaimer = document.getElementById('i18n-disclaimer');
+    if (disclaimer) disclaimer.hidden = lang === 'en';
+}
+
 // --- Utility Functions -------------------------------------------------------
 
 function weatherInfo(code, isNight) {
-    const desc = WEATHER_DESCRIPTIONS[code] || { text: 'Unknown', icon: '❓', nightIcon: '❓' };
-    return { text: desc.text, icon: isNight ? desc.nightIcon : desc.icon };
+    const icons = WEATHER_ICONS[code] || { icon: '❓', nightIcon: '❓' };
+    const key = `wc${code}`;
+    const translated = t(key);
+    const text = translated !== key ? translated : t('wcUnknown');
+    return { text, icon: isNight ? icons.nightIcon : icons.icon };
 }
 
 function windDirection(degrees) {
@@ -708,15 +735,15 @@ function getMoonPhase(date) {
     const phaseFraction = phase / synodicMonth;
 
     let name, icon;
-    if (phaseFraction < 0.0625) { name = 'New Moon'; icon = '🌑'; }
-    else if (phaseFraction < 0.1875) { name = 'Waxing Crescent'; icon = '🌒'; }
-    else if (phaseFraction < 0.3125) { name = 'First Quarter'; icon = '🌓'; }
-    else if (phaseFraction < 0.4375) { name = 'Waxing Gibbous'; icon = '🌔'; }
-    else if (phaseFraction < 0.5625) { name = 'Full Moon'; icon = '🌕'; }
-    else if (phaseFraction < 0.6875) { name = 'Waning Gibbous'; icon = '🌖'; }
-    else if (phaseFraction < 0.8125) { name = 'Last Quarter'; icon = '🌗'; }
-    else if (phaseFraction < 0.9375) { name = 'Waning Crescent'; icon = '🌘'; }
-    else { name = 'New Moon'; icon = '🌑'; }
+    if (phaseFraction < 0.0625) { name = t('moonPhaseNewMoon'); icon = '🌑'; }
+    else if (phaseFraction < 0.1875) { name = t('moonPhaseWaxingCrescent'); icon = '🌒'; }
+    else if (phaseFraction < 0.3125) { name = t('moonPhaseFirstQuarter'); icon = '🌓'; }
+    else if (phaseFraction < 0.4375) { name = t('moonPhaseWaxingGibbous'); icon = '🌔'; }
+    else if (phaseFraction < 0.5625) { name = t('moonPhaseFullMoon'); icon = '🌕'; }
+    else if (phaseFraction < 0.6875) { name = t('moonPhaseWaningGibbous'); icon = '🌖'; }
+    else if (phaseFraction < 0.8125) { name = t('moonPhaseLastQuarter'); icon = '🌗'; }
+    else if (phaseFraction < 0.9375) { name = t('moonPhaseWaningCrescent'); icon = '🌘'; }
+    else { name = t('moonPhaseNewMoon'); icon = '🌑'; }
 
     return { name, icon };
 }
@@ -1126,12 +1153,12 @@ async function fetchAirQuality(lat, lon) {
 }
 
 function aqiLabel(aqi) {
-    if (aqi <= 50) return { text: 'Good', color: '#16a34a' };
-    if (aqi <= 100) return { text: 'Moderate', color: '#ca8a04' };
-    if (aqi <= 150) return { text: 'Unhealthy (Sensitive)', color: '#ea580c' };
-    if (aqi <= 200) return { text: 'Unhealthy', color: '#dc2626' };
-    if (aqi <= 300) return { text: 'Very Unhealthy', color: '#7c3aed' };
-    return { text: 'Hazardous', color: '#7f1d1d' };
+    if (aqi <= 50) return { text: t('aqiGood'), color: '#16a34a' };
+    if (aqi <= 100) return { text: t('aqiModerate'), color: '#ca8a04' };
+    if (aqi <= 150) return { text: t('aqiUnhealthyForSensitive'), color: '#ea580c' };
+    if (aqi <= 200) return { text: t('aqiUnhealthy'), color: '#dc2626' };
+    if (aqi <= 300) return { text: t('aqiVeryUnhealthy'), color: '#7c3aed' };
+    return { text: t('aqiHazardous'), color: '#7f1d1d' };
 }
 
 function pollenSummary(aq) {
@@ -1147,10 +1174,10 @@ function pollenSummary(aq) {
     if (types.length === 0) return null;
 
     function level(v) {
-        if (v <= 10) return 'Low';
-        if (v <= 50) return 'Moderate';
-        if (v <= 100) return 'High';
-        return 'Very High';
+        if (v <= 10) return t('pollenLow');
+        if (v <= 50) return t('pollenMedium');
+        if (v <= 100) return t('pollenHigh');
+        return t('pollenVeryHigh');
     }
     function levelColor(v) {
         if (v <= 10) return '#16a34a';
@@ -1186,7 +1213,10 @@ async function fetchProxyAlerts(lat, lon, country, region) {
         const res = await fetch(ALERTS_PROXY_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat, lon, country: country || '', region: region || '' })
+            body: JSON.stringify({
+                lat, lon,
+                lang: getCurrentLang() || 'en'
+            })
         });
         if (!res.ok) return [];
         const data = await res.json();
@@ -1207,13 +1237,31 @@ function generateSummary(current, hourly, daily) {
     const now = new Date();
     const currentTemp = Math.round(current.temperature_2m);
     const feelsLike = Math.round(current.apparent_temperature);
-    const info = weatherInfo(current.weather_code);
 
-    // Find next rain in the next 24 hours
+    // --- Thresholds (imperial/metric) ---
+    const freezing = isImperial() ? 32 : 0;
+    const cold = isImperial() ? 50 : 10;
+    const cool = isImperial() ? 65 : 18;
+    const warm = isImperial() ? 80 : 27;
+    const hot = isImperial() ? 95 : 35;
+
+    // --- Temp adjective ---
+    const tempAdjKey = currentTemp <= freezing ? 'sumTempFreezing'
+                     : currentTemp <= cold ? 'sumTempCold'
+                     : currentTemp <= cool ? 'sumTempCool'
+                     : currentTemp <= warm ? 'sumTempMild'
+                     : currentTemp <= hot ? 'sumTempWarm'
+                     : 'sumTempHot';
+    const tempAdj = t(tempAdjKey);
+
+    const feelsLikeSuffix = Math.abs(feelsLike - currentTemp) >= 5
+        ? t('sumFeelsLikeSuffix', { feelsLike, unit: tempUnit() })
+        : '';
+
+    // --- Rain detection over the next 24 hours (preserved verbatim from original) ---
     const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
     let rainStartHour = null;
     let rainEndHour = null;
-    let currentlyRaining = current.weather_code >= 51 && current.weather_code <= 99;
 
     if (startIdx !== -1) {
         for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
@@ -1227,76 +1275,62 @@ function generateSummary(current, hourly, daily) {
         }
     }
 
-    // Today's high and precip
-    const todayHigh = Math.round(daily.temperature_2m_max[0]);
-    const todayLow = Math.round(daily.temperature_2m_min[0]);
-    const todayPrecip = daily.precipitation_sum[0];
-
-    // Tomorrow's conditions
-    const tomorrowInfo = daily.time.length > 1 ? weatherInfo(daily.weather_code[1]) : null;
-    const tomorrowHigh = daily.time.length > 1 ? Math.round(daily.temperature_2m_max[1]) : null;
-    const tomorrowPrecip = daily.time.length > 1 ? daily.precipitation_sum[1] : 0;
-    const tomorrowCode = daily.time.length > 1 ? daily.weather_code[1] : 0;
-
-    // Build opening sentence (temp + condition combined)
-    // Thresholds adapt to F or C
-    const freezing = isImperial() ? 32 : 0;
-    const cold = isImperial() ? 50 : 10;
-    const cool = isImperial() ? 65 : 18;
-    const warm = isImperial() ? 80 : 27;
-    const hot = isImperial() ? 95 : 35;
-
-    let opening;
-    if (currentTemp <= freezing) opening = `It's freezing at ${currentTemp}${tempUnit()}`;
-    else if (currentTemp <= cold) opening = `It's cold at ${currentTemp}${tempUnit()}`;
-    else if (currentTemp <= cool) opening = `It's cool at ${currentTemp}${tempUnit()}`;
-    else if (currentTemp <= warm) opening = `It's ${currentTemp}${tempUnit()}`;
-    else if (currentTemp <= hot) opening = `It's warm at ${currentTemp}${tempUnit()}`;
-    else opening = `It's hot at ${currentTemp}${tempUnit()}`;
-
-    if (Math.abs(feelsLike - currentTemp) >= 5) {
-        opening += ` (feels like ${feelsLike}${tempUnit()})`;
-    }
-
-    // Add condition to the opening sentence
+    const hoursUntil = rainStartHour ? (rainStartHour - now) / (1000 * 60 * 60) : null;
     const isSnow = (code) => code >= 71 && code <= 77 || code === 85 || code === 86;
-    if (currentlyRaining) {
-        const code = current.weather_code;
-        if (code >= 95) opening += ' with thunderstorms';
-        else if (isSnow(code)) opening += ' and snowing';
-        else opening += ' and raining';
-        if (todayPrecip > 0) opening += ` (${fmtPrecip(todayPrecip)} expected today)`;
-        if (rainEndHour) opening += `, clearing around ${fmtHour(rainEndHour)}`;
-    } else if (rainStartHour) {
-        const hoursUntil = (rainStartHour - now) / (1000 * 60 * 60);
-        if (hoursUntil <= 1) opening += ' with rain expected very soon';
-        else opening += ` with rain likely around ${fmtHour(rainStartHour)}`;
-    } else {
-        if (info.text.toLowerCase().includes('clear') || info.text.toLowerCase().includes('sunny')) {
-            opening += ' with clear skies';
-        } else if (info.text.toLowerCase().includes('cloud') || info.text.toLowerCase().includes('overcast')) {
-            opening += ' and cloudy';
+
+    // --- Condition clause ---
+    const code = current.weather_code;
+    const todayPrecip = daily.precipitation_sum[0];
+    let conditionClause;
+
+    if (code >= 51 && code <= 99) {
+        if (code >= 95) {
+            conditionClause = t('sumConditionThunderstorms');
+        } else if (isSnow(code)) {
+            conditionClause = t('sumConditionSnowing');
+        } else if (rainEndHour && todayPrecip > 0) {
+            conditionClause = t('sumConditionRainingWithAmountClearingBy', { amount: fmtPrecip(todayPrecip), hour: fmtHour(rainEndHour) });
+        } else if (todayPrecip > 0) {
+            conditionClause = t('sumConditionRainingWithAmount', { amount: fmtPrecip(todayPrecip) });
+        } else {
+            conditionClause = t('sumConditionRaining');
         }
+    } else if (rainStartHour) {
+        if (hoursUntil <= 1) conditionClause = t('sumConditionRainSoon');
+        else conditionClause = t('sumConditionRainLikelyAround', { hour: fmtHour(rainStartHour) });
+    } else {
+        const cloudCover = current.cloud_cover;
+        conditionClause = cloudCover < 30 ? t('sumConditionClearSkies') : t('sumConditionCloudy');
     }
 
-    // Follow-up sentences
-    let follow = [];
-    follow.push(`High of ${todayHigh}${tempUnit()} today`);
+    const opening = t('sumOpeningTemplate', {
+        tempAdj,
+        temp: currentTemp,
+        unit: tempUnit(),
+        feelsLikeSuffix,
+        conditionClause
+    });
 
-    if (tomorrowInfo && tomorrowHigh !== null) {
-        const tomorrowRain = tomorrowCode >= 51 && tomorrowCode <= 99;
-        const tomorrowSnow = isSnow(tomorrowCode);
-        if (tomorrowSnow && tomorrowPrecip > 0) {
-            follow.push(`Snow expected tomorrow (${fmtPrecip(tomorrowPrecip)})`);
-        } else if (tomorrowRain && tomorrowPrecip > 0) {
-            follow.push(`Rain expected tomorrow (${fmtPrecip(tomorrowPrecip)})`);
-        } else if (tomorrowRain) {
-            follow.push(`Rain expected tomorrow`);
-        } else if (tomorrowHigh - todayHigh >= 8) {
-            follow.push(`warming up to ${tomorrowHigh}${tempUnit()} tomorrow`);
-        } else if (todayHigh - tomorrowHigh >= 8) {
-            follow.push(`cooling to ${tomorrowHigh}${tempUnit()} tomorrow`);
-        }
+    // --- Follow-up sentences ---
+    const todayHigh = Math.round(daily.temperature_2m_max[0]);
+    const follow = [t('sumTodayHigh', { high: todayHigh, unit: tempUnit() })];
+
+    const tomorrowHigh = daily.time.length > 1 ? Math.round(daily.temperature_2m_max[1]) : null;
+    const tomorrowCode = daily.time.length > 1 ? daily.weather_code[1] : 0;
+    const tomorrowPrecip = daily.time.length > 1 ? daily.precipitation_sum[1] : 0;
+    const tomorrowRain = tomorrowCode >= 51 && tomorrowCode <= 99 && !isSnow(tomorrowCode);
+    const tomorrowSnow = isSnow(tomorrowCode);
+
+    if (tomorrowSnow && tomorrowPrecip > 0) {
+        follow.push(t('sumTomorrowSnowWithAmount', { amount: fmtPrecip(tomorrowPrecip) }));
+    } else if (tomorrowRain && tomorrowPrecip > 0) {
+        follow.push(t('sumTomorrowRainWithAmount', { amount: fmtPrecip(tomorrowPrecip) }));
+    } else if (tomorrowRain) {
+        follow.push(t('sumTomorrowRainNoAmount'));
+    } else if (tomorrowHigh !== null && tomorrowHigh - todayHigh >= 8) {
+        follow.push(t('sumTomorrowWarming', { high: tomorrowHigh, unit: tempUnit() }));
+    } else if (tomorrowHigh !== null && todayHigh - tomorrowHigh >= 8) {
+        follow.push(t('sumTomorrowCooling', { high: tomorrowHigh, unit: tempUnit() }));
     }
 
     return opening + '. ' + follow.join('. ') + '.';
@@ -1321,7 +1355,7 @@ function renderCurrent(current, airQuality) {
     const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
 
     section.innerHTML = `
-        <h2>Current Conditions</h2>
+        <h2>${t('currentConditions')}</h2>
         <div class="current-main">
             <div class="current-icon-block">
                 <div class="icon">${info.icon}</div>
@@ -1329,34 +1363,34 @@ function renderCurrent(current, airQuality) {
             </div>
             <div class="current-temp-block">
                 <div class="temp">${Math.round(current.temperature_2m)}${tempUnit()}</div>
-                <div class="feels-like">Feels like ${Math.round(current.apparent_temperature)}${tempUnit()}</div>
+                <div class="feels-like">${t('feelsLike')} ${Math.round(current.apparent_temperature)}${tempUnit()}</div>
             </div>
         </div>
         <div class="current-details-grid">
             <div class="detail-item">
-                <span class="detail-label">Humidity</span>
+                <span class="detail-label">${t('humidity')}</span>
                 <span class="detail-value">${current.relative_humidity_2m}%</span>
             </div>
             <div class="detail-item">
-                <span class="detail-label">Dew Point</span>
+                <span class="detail-label">${t('dewPoint')}</span>
                 <span class="detail-value">${Math.round(current.dew_point_2m)}${tempUnit()}</span>
             </div>
             <div class="detail-item">
-                <span class="detail-label">Wind</span>
+                <span class="detail-label">${t('wind')}</span>
                 <span class="detail-value">${Math.round(current.wind_speed_10m)} ${windUnit()} ${windDirection(current.wind_direction_10m)}</span>
             </div>
             <div class="detail-item">
-                <span class="detail-label">Gusts</span>
+                <span class="detail-label">${t('gusts')}</span>
                 <span class="detail-value">${Math.round(current.wind_gusts_10m)} ${windUnit()}</span>
             </div>
             ${aqiInfo ? `
             <div class="detail-item">
-                <span class="detail-label">Air Quality</span>
+                <span class="detail-label">${t('airQuality')}</span>
                 <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
             </div>` : ''}
             <div class="detail-item">
-                <span class="detail-label">UV Index</span>
-                <span class="detail-value">${uvVal} ${uvVal <= 2 ? '(Low)' : uvVal <= 5 ? '(Moderate)' : uvVal <= 7 ? '(High)' : uvVal <= 10 ? '(Very High)' : '(Extreme)'}</span>
+                <span class="detail-label">${t('uvIndex')}</span>
+                <span class="detail-value">${uvVal} ${uvVal <= 2 ? t('uvLow') : uvVal <= 5 ? t('uvModerate') : uvVal <= 7 ? t('uvHigh') : uvVal <= 10 ? t('uvVeryHigh') : t('uvExtreme')}</span>
             </div>
         </div>
     `;
@@ -1372,7 +1406,7 @@ function renderPollen(airQuality, lat, lon) {
     if (hasFreePollen) {
         // European locations — show Open-Meteo pollen directly
         section.innerHTML = `
-            <h2>Pollen</h2>
+            <h2>${t('pollen')}</h2>
             <div class="pollen-scroll">
                 ${openMeteoPollen.map(p => `
                     <div class="pollen-item">
@@ -1390,15 +1424,15 @@ function renderPollen(airQuality, lat, lon) {
         if (cached) {
             // Auto-show cached data
             section.innerHTML = `
-                <h2>Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span></h2>
+                <h2>${t('pollen')} <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString(getCurrentLang(), { month: 'long', day: 'numeric' })})</span></h2>
                 <div id="pollen-content"></div>
             `;
             displayPollenData(JSON.parse(cached));
         } else {
             section.innerHTML = `
-                <h2>Pollen</h2>
+                <h2>${t('pollen')}</h2>
                 <div id="pollen-content">
-                    <button id="pollen-btn" class="pollen-btn">See pollen data</button>
+                    <button id="pollen-btn" class="pollen-btn">${t('seePollenData')}</button>
                 </div>
             `;
             document.getElementById('pollen-btn').addEventListener('click', () => {
@@ -1413,7 +1447,7 @@ function displayPollenData(data) {
     const section = document.getElementById('details-section');
 
     if (!data || data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
-        content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">Pollen data unavailable for this location</span>';
+        content.innerHTML = `<span style="color:var(--text-muted);font-size:0.85rem;">${t('pollenDataUnavailable')}</span>`;
         return;
     }
 
@@ -1441,7 +1475,7 @@ function displayPollenData(data) {
     // Update header with date
     const h2 = section.querySelector('h2');
     if (h2) {
-        h2.innerHTML = `Pollen <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })})</span>`;
+        h2.innerHTML = `${t('pollen')} <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString(getCurrentLang(), { month: 'long', day: 'numeric' })})</span>`;
     }
 
     const fewClass = items.length <= 3 ? ' pollen-few' : '';
@@ -1460,7 +1494,7 @@ function displayPollenData(data) {
 
 async function loadPollenData(lat, lon) {
     const btn = document.getElementById('pollen-btn');
-    btn.textContent = 'Loading...';
+    btn.textContent = t('loading');
     btn.disabled = true;
 
     const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
@@ -1491,7 +1525,7 @@ function renderHourly(hourly) {
     const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
     if (startIdx === -1) { section.innerHTML = ''; return; }
 
-    let html = '<h2>Hourly Forecast</h2><div class="hourly-scroll">';
+    let html = `<h2>${t('hourlyForecast')}</h2><div class="hourly-scroll">`;
     for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
         const time = new Date(hourly.time[i]);
         const hour = time.getHours();
@@ -1585,17 +1619,17 @@ function renderDaily(daily, hourly) {
 
     const r = chartRanges;
 
-    const tempLegend = `<span><span style="color:#dc2626;">■</span> Temperature (${tempUnit()})</span><span><span style="color:#9333ea;">■</span> Feels Like (${tempUnit()})</span><span><span style="color:#16a34a;">■</span> Dew Point (${tempUnit()})</span>`;
-    const atmosLegend = '<span><span style="color:#9ca3af;">■</span> Cloud Cover (%)</span><span><span style="color:#3b82f6;">■</span> Precip Chance (%)</span><span><span style="color:#84cc16;">■</span> Humidity (%)</span><span><span style="color:#1a1a1a;">■</span> Pressure (inHg)</span>';
-    const precipLegend = `<span><span style="color:#3b82f6;">■</span> Precip Accum. (${isImperial() ? 'in' : 'mm'})</span><span><span style="color:#16a34a;">■</span> Hourly Precip (${isImperial() ? 'in' : 'mm'})</span>`;
-    const windLegend = `<span><span style="color:#2563eb;">■</span> Wind Speed (${windUnit()})</span>`;
+    const tempLegend = `<span><span style="color:#dc2626;">■</span> ${t('chartTemperature')} (${tempUnit()})</span><span><span style="color:#9333ea;">■</span> ${t('chartFeelsLike')} (${tempUnit()})</span><span><span style="color:#16a34a;">■</span> ${t('chartDewPoint')} (${tempUnit()})</span>`;
+    const atmosLegend = `<span><span style="color:#9ca3af;">■</span> ${t('chartCloudCover')} (%)</span><span><span style="color:#3b82f6;">■</span> ${t('chartPrecipChance')} (%)</span><span><span style="color:#84cc16;">■</span> ${t('chartHumidity')} (%)</span><span><span style="color:#1a1a1a;">■</span> ${t('chartPressure')} (inHg)</span>`;
+    const precipLegend = `<span><span style="color:#3b82f6;">■</span> ${t('chartPrecipAccum')} (${isImperial() ? 'in' : 'mm'})</span><span><span style="color:#16a34a;">■</span> ${t('chartHourlyPrecip')} (${isImperial() ? 'in' : 'mm'})</span>`;
+    const windLegend = `<span><span style="color:#2563eb;">■</span> ${t('chartWindSpeed')} (${windUnit()})</span>`;
 
     // Axis width must match CSS .chart-axis width
     const AXIS_W = 40;
     const totalScrollW = innerW + AXIS_W * 2;
 
     section.innerHTML = `
-        <h2>10-Day Forecast ${showTempColors ? '<span style="text-transform:none;font-weight:400;font-size:0.7rem;color:var(--text-muted);">— colors show relative temps: red = warmest, blue = coolest</span>' : ''}</h2>
+        <h2>${t('tenDayForecast')} ${showTempColors ? '<span style="text-transform:none;font-weight:400;font-size:0.7rem;color:var(--text-muted);">— colors show relative temps: red = warmest, blue = coolest</span>' : ''}</h2>
         <div class="forecast-scroll-outer">
             <div class="forecast-scroll" style="width:${totalScrollW}px;">
                 <div class="forecast-header">
@@ -1884,7 +1918,7 @@ function renderAlerts(alerts) {
                     <details class="alert-desc" style="font-size:0.8rem;margin-top:0.4rem;">
                         <summary style="cursor:pointer;list-style:none;">
                             <span class="alert-desc-preview">${previewEsc}</span>
-                            <span class="alert-desc-more" style="text-decoration:underline;"> Show more</span>
+                            <span class="alert-desc-more" style="text-decoration:underline;"> ${t('showMore')}</span>
                         </summary>
                         <div style="margin-top:0.4rem;white-space:pre-wrap;">${descEsc}</div>
                     </details>`;
@@ -1908,7 +1942,7 @@ function renderAlerts(alerts) {
             const preview = d.querySelector('.alert-desc-preview');
             const more = d.querySelector('.alert-desc-more');
             if (preview) preview.style.display = d.open ? 'none' : '';
-            if (more) more.textContent = d.open ? ' Show less' : ' Show more';
+            if (more) more.textContent = d.open ? ' ' + t('showLess') : ' ' + t('showMore');
         });
     });
 }
@@ -2117,7 +2151,7 @@ async function loadRadar(lat, lon) {
         if (pauseBtn) pauseBtn.addEventListener('click', () => {
             paused = !paused;
             pauseBtn.textContent = paused ? '▶' : '⏸';
-            pauseBtn.title = paused ? 'Play' : 'Pause';
+            pauseBtn.title = paused ? t('playRadar') : t('pauseRadar');
         });
 
         const slowerBtn = document.getElementById('radar-slower');
@@ -2222,7 +2256,7 @@ function renderSunMoon(daily, lat, lon, utcOffsetSeconds) {
            </div>`;
 
     moonSection.innerHTML = `
-        <h2>Moon</h2>
+        <h2>${t('moon')}</h2>
         <div class="astro-grid">
             ${firstItem}
             <div class="astro-item">
@@ -2374,7 +2408,7 @@ async function fetchAllWeatherData(lat, lon, country, region) {
     document.getElementById('details-section').innerHTML = '';
     document.getElementById('hourly-section').innerHTML = '';
     document.getElementById('daily-section').innerHTML = '';
-    document.getElementById('radar-section').innerHTML = '<h2>Radar</h2><div class="loading">Loading...</div>';
+    document.getElementById('radar-section').innerHTML = `<h2>${t('radar')}</h2><div class="loading">${t('loading')}</div>`;
     document.getElementById('sun-section').innerHTML = '';
     document.getElementById('moon-section').innerHTML = '';
 
@@ -2499,7 +2533,7 @@ function applyLayoutLock() {
     const btn = document.getElementById('lock-toggle');
     if (btn) {
         btn.textContent = locked ? '🔒' : '🔓';
-        btn.title = locked ? 'Unlock layout' : 'Lock layout';
+        btn.title = locked ? t('unlockLayout') : t('lockLayout');
     }
 }
 
@@ -2673,6 +2707,9 @@ window.addEventListener('popstate', () => {
     }
 });
 
+// Apply translations before any rendering
+applyTranslations();
+
 // Load from URL on page load
 loadFromURL();
 
@@ -2680,13 +2717,77 @@ loadFromURL();
 initSectionDrag();
 initChartDrag();
 
+// --- Language UI -------------------------------------------------------------
+
+(function initLanguageUI() {
+    const langBtn = document.getElementById('language-btn');
+    const langPopover = document.getElementById('language-popover');
+    const langList = document.getElementById('language-list');
+    const settingsPopover = document.getElementById('settings-popover');
+    if (!langBtn || !langPopover || !langList) return;
+
+    const curLang = getCurrentLang();
+
+    // Button text: "Language: [flag(s)] <lang name>"
+    let btnFlagHtml;
+    if (curLang === 'en') {
+        btnFlagHtml = `<img src="img/flags/en.png" class="lang-btn-flag" alt="US"><img src="img/flags/gb.png" class="lang-btn-flag" alt="UK">`;
+    } else if (curLang === 'pt') {
+        btnFlagHtml = `<img src="img/flags/pt-br.png" class="lang-btn-flag" alt="BR"><img src="img/flags/pt-eu.png" class="lang-btn-flag" alt="PT">`;
+    } else {
+        btnFlagHtml = `<img src="${LANGUAGE_FLAGS[curLang]}" class="lang-btn-flag" alt="">`;
+    }
+    langBtn.innerHTML = `${t('language')}: ${btnFlagHtml} ${LANGUAGE_NAMES[curLang] || 'English'}`;
+
+    // Radio list with flags
+    langList.innerHTML = Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
+        const checked = code === curLang ? 'checked' : '';
+        let flagHtml;
+        if (code === 'en') {
+            flagHtml = `<span class="lang-flags"><img src="img/flags/en.png" alt="US"><img src="img/flags/gb.png" alt="UK"></span>`;
+        } else if (code === 'pt') {
+            flagHtml = `<span class="lang-flags"><img src="img/flags/pt-br.png" alt="BR"><img src="img/flags/pt-eu.png" alt="PT"></span>`;
+        } else {
+            flagHtml = `<img class="lang-flag" src="${LANGUAGE_FLAGS[code]}" alt="">`;
+        }
+        return `<label class="language-option">
+            <input type="radio" name="language" value="${code}" ${checked}>
+            ${flagHtml}
+            <span class="lang-name">${name}</span>
+        </label>`;
+    }).join('');
+
+    // Open language popover (close settings popover)
+    langBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (settingsPopover) settingsPopover.hidden = true;
+        langPopover.hidden = !langPopover.hidden;
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!langPopover.hidden && !langPopover.contains(e.target) && e.target !== langBtn) {
+            langPopover.hidden = true;
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !langPopover.hidden) langPopover.hidden = true;
+    });
+
+    langList.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.checked) setLanguage(radio.value);
+        });
+    });
+})();
+
 // --- PWA Manifest (dynamic start_url) ----------------------------------------
 
 (function () {
     const manifest = {
         name: 'NoAdsWeather',
         short_name: 'Weather',
-        description: 'Weather without the clutter.',
+        description: t('tagline'),
         start_url: window.location.href,
         display: 'standalone',
         background_color: '#111827',

@@ -16,7 +16,7 @@
     <div id="home-view" class="view">
         <header class="home-header">
             <h1>NoAdsWeather</h1>
-            <p class="tagline">Weather without the clutter.</p>
+            <p class="tagline" data-i18n="tagline">Weather without the clutter.</p>
         </header>
         <main class="search-container">
             <form id="search-form" role="search">
@@ -24,39 +24,27 @@
                     type="text"
                     id="search-input"
                     placeholder="Enter city or zip code"
+                    data-i18n="searchPlaceholder"
+                    data-i18n-attr="placeholder"
                     autocomplete="off"
                     required
                 >
-                <button type="submit">Search</button>
+                <button type="submit" data-i18n="searchButton">Search</button>
             </form>
             <p id="search-error" class="error" hidden></p>
         </main>
-        <button id="privacy-toggle-home" class="privacy-link privacy-link-fixed">Privacy / Cookies</button>
+        <button id="privacy-toggle-home" class="privacy-link privacy-link-fixed" data-i18n="privacyCookies">Privacy / Cookies</button>
     </div>
 
     <!-- Weather View (hidden initially) -->
     <div id="weather-view" class="view" hidden>
         <header class="weather-header">
             <div class="weather-toolbar">
-                <button id="back-btn" aria-label="Back to search">&larr; Back</button>
+                <button id="back-btn" data-i18n="back" aria-label="Back to search">&larr; Back</button>
                 <div class="weather-toggles">
                     <button id="units-toggle" class="units-toggle">°F</button>
                     <button id="time-toggle" class="units-toggle">12H</button>
-                    <button id="lock-toggle" class="units-toggle" title="Lock layout">🔓</button>
-                    <button id="settings-toggle" class="units-toggle" title="Settings">⚙️</button>
-                    <!-- Settings popover (hidden by default) -->
-                    <div id="settings-popover" hidden>
-                        <label><input type="checkbox" id="setting-forecast-colors" data-setting="showForecastColors" checked> Show color backgrounds on 10-day forecast</label>
-                        <label><input type="checkbox" id="setting-support-btn" data-setting="showSupportBtn" checked> Show Annoying Support Button</label>
-                        <label><input type="checkbox" id="setting-weather-summary" data-setting="showWeatherSummary" checked> Show weather summary</label>
-                        <label><input type="checkbox" id="setting-theme-toggle" data-setting="showThemeToggle" checked> Show Light Mode / Dark Mode button</label>
-                        <label><input type="checkbox" id="setting-units-btn" data-setting="showUnitsBtn" checked> Show °C / °F button</label>
-                        <label><input type="checkbox" id="setting-time-btn" data-setting="showTimeBtn" checked> Show 12H / 24H button</label>
-                        <label><input type="checkbox" id="setting-lock-btn" data-setting="showLockBtn" checked> Show Lock / Unlock button</label>
-                        <label><input type="checkbox" id="setting-nws-link" data-setting="showNwsLink" checked> Show NWS Radar link</label>
-                        <label><input type="checkbox" id="setting-show-section-btns" data-setting="showSectionButtons" checked> Show "Show section" buttons when sections are hidden</label>
-                        <button id="settings-revert" class="settings-revert-btn">Restore Default Layout</button>
-                    </div>
+                    <button id="lock-toggle" class="units-toggle" data-i18n="lockLayout" data-i18n-attr="title" title="Lock layout">🔓</button>
                 </div>
             </div>
             <h1 id="location-name"></h1>
@@ -72,7 +60,7 @@
             <section id="sun-section"></section>
             <section id="moon-section"></section>
             <div class="bottom-spacer">
-                <button id="privacy-toggle-weather" class="privacy-link">Privacy / Cookies</button>
+                <button id="privacy-toggle-weather" class="privacy-link" data-i18n="privacyCookies">Privacy / Cookies</button>
             </div>
         </main>
     </div>
@@ -80,6 +68,7 @@
     <!-- Privacy panel (shared, hidden by default) -->
     <div id="privacy-panel" hidden>
         <button id="privacy-close" aria-label="Close">&times;</button>
+        <p id="i18n-disclaimer" data-i18n="machineTranslationNotice" hidden></p>
         <p><strong>No cookies. No tracking. No ads.</strong></p>
         <p>This site does not use cookies, does not track your location, and does not collect any personal information. We don't use analytics, fingerprinting, or any form of user tracking.</p>
         <p>When you search for a city or zip code, the coordinates of that location (not your personal location) are sent to the following third-party services to retrieve weather data:</p>
@@ -97,13 +86,37 @@
         <p>This site is open source and supported by tips from our visitors. No data is sold, shared, or monetized in any way. If you think this is awesome, please consider <a href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener" style="color:var(--accent);">clicking here to support us</a>.</p>
     </div>
 
-    <!-- Theme toggle + restore defaults -->
+    <!-- Theme toggle + settings button (both floating, bottom-left) -->
     <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+    <button id="settings-toggle" data-i18n="settings" data-i18n-attr="title" title="Settings" aria-label="Settings">⚙️</button>
+
+    <!-- Settings popover (floating, hidden by default) -->
+    <div id="settings-popover" hidden>
+        <button id="language-btn" class="settings-language-btn" type="button">Language</button>
+        <label><input type="checkbox" id="setting-forecast-colors" data-setting="showForecastColors" checked> <span data-i18n="settingForecastColors">Show color backgrounds on 10-day forecast</span></label>
+        <label><input type="checkbox" id="setting-support-btn" data-setting="showSupportBtn" checked> <span data-i18n="settingSupportBtn">Show Annoying Support Button</span></label>
+        <label><input type="checkbox" id="setting-weather-summary" data-setting="showWeatherSummary" checked> <span data-i18n="settingWeatherSummary">Show weather summary</span></label>
+        <label><input type="checkbox" id="setting-theme-toggle" data-setting="showThemeToggle" checked> <span data-i18n="settingThemeToggle">Show Light Mode / Dark Mode button</span></label>
+        <label><input type="checkbox" id="setting-units-btn" data-setting="showUnitsBtn" checked> <span data-i18n="settingUnitsBtn">Show °C / °F button</span></label>
+        <label><input type="checkbox" id="setting-time-btn" data-setting="showTimeBtn" checked> <span data-i18n="settingTimeBtn">Show 12H / 24H button</span></label>
+        <label><input type="checkbox" id="setting-lock-btn" data-setting="showLockBtn" checked> <span data-i18n="settingLockBtn">Show Lock / Unlock button</span></label>
+        <label><input type="checkbox" id="setting-nws-link" data-setting="showNwsLink" checked> <span data-i18n="settingNwsLink">Show NWS Radar link</span></label>
+        <label><input type="checkbox" id="setting-show-section-btns" data-setting="showSectionButtons" checked> <span data-i18n="settingShowSectionButtons">Show "Show section" buttons when sections are hidden</span></label>
+        <button id="settings-revert" class="settings-revert-btn" data-i18n="restoreDefaultLayout">Restore Default Layout</button>
+    </div>
+
+    <!-- Language popover (hidden by default) -->
+    <div id="language-popover" class="language-popover" hidden>
+        <h3 data-i18n="language">Language</h3>
+        <div id="language-list" class="language-list"></div>
+    </div>
+
     <!-- Floating donate button -->
-    <a id="donate-btn" href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener">
+    <a id="donate-btn" href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener" data-i18n="supportThisSite">
         Support this site
     </a>
 
+    <script src="js/i18n.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

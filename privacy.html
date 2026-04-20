@@ -46,7 +46,7 @@
 </head>
 <body>
     <div class="privacy-page">
-        <a href="/" class="back-link">&larr; Back to NoAdsWeather</a>
+        <a href="/" class="back-link" data-i18n="back">&larr; Back to NoAdsWeather</a>
         <h1>Privacy Policy</h1>
         <p><strong>No cookies. No tracking. No ads.</strong></p>
         <p>This site does not use cookies, does not track your location, and does not collect any personal information. We don't use analytics, fingerprinting, or any form of user tracking.</p>
@@ -69,6 +69,18 @@
         const theme = localStorage.getItem('theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', theme);
+    </script>
+    <script src="js/i18n.js"></script>
+    <script>
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            const attr = el.dataset.i18nAttr;
+            const text = t(key);
+            if (attr) el.setAttribute(attr, text);
+            else el.textContent = text;
+        });
+        document.documentElement.lang = getCurrentLang();
+        document.documentElement.dir = getCurrentLang() === 'ar' ? 'rtl' : 'ltr';
     </script>
 </body>
 </html>
