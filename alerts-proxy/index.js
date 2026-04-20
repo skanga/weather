@@ -49,14 +49,14 @@ functions.http('alerts', async (req, res) => {
     if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-    const { lat, lon, lang } = req.body || {};
+    const { lat, lon } = req.body || {};
     if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
         lat < -90 || lat > 90 || lon < -180 || lon > 180) {
         res.status(400).json({ error: 'valid lat/lon required' });
         return;
     }
 
-    const cacheKey = `owm:${lat.toFixed(2)},${lon.toFixed(2)}:${lang || 'en'}`;
+    const cacheKey = `owm:${lat.toFixed(2)},${lon.toFixed(2)}`;
     const cached = CACHE.get(cacheKey);
     if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
         res.json(cached.data);
@@ -70,8 +70,10 @@ functions.http('alerts', async (req, res) => {
         return;
     }
 
-    const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : '';
-    const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,daily${langParam}&appid=${apiKey}`;
+    // Note: OWM's `lang` param does not translate alerts — alerts come in the
+    // issuing agency's language regardless. Omitted here; we rely on the
+    // client-side "Translate" link for cross-language reading.
+    const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,daily&appid=${apiKey}`;
 
     try {
         const controller = new AbortController();

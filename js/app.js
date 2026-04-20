@@ -1213,10 +1213,7 @@ async function fetchProxyAlerts(lat, lon, country, region) {
         const res = await fetch(ALERTS_PROXY_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                lat, lon,
-                lang: getCurrentLang() || 'en'
-            })
+            body: JSON.stringify({ lat, lon })
         });
         if (!res.ok) return [];
         const data = await res.json();
