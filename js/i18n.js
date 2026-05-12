@@ -175,6 +175,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Refresh radar',
         pauseRadar: 'Pause',
         playRadar: 'Play',
+        // Radar progress / forecast labels
+        forecastLabel: 'FORECAST',
+        radarNow: 'NOW',
         slowerRadar: 'Slower',
         fasterRadar: 'Faster',
 
@@ -375,6 +378,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Actualizar radar',
         pauseRadar: 'Pausar',
         playRadar: 'Reproducir',
+        // Radar progress / forecast labels
+        forecastLabel: 'PRONÓSTICO',
+        radarNow: 'AHORA',
         slowerRadar: 'Más lento',
         fasterRadar: 'Más rápido',
 
@@ -575,6 +581,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Actualiser le radar',
         pauseRadar: 'Pause',
         playRadar: 'Lecture',
+        // Radar progress / forecast labels
+        forecastLabel: 'PRÉVISION',
+        radarNow: 'MAINTENANT',
         slowerRadar: 'Plus lent',
         fasterRadar: 'Plus rapide',
 
@@ -775,6 +784,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Radar aktualisieren',
         pauseRadar: 'Pause',
         playRadar: 'Abspielen',
+        // Radar progress / forecast labels
+        forecastLabel: 'VORHERSAGE',
+        radarNow: 'JETZT',
         slowerRadar: 'Langsamer',
         fasterRadar: 'Schneller',
 
@@ -975,6 +987,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Aggiorna radar',
         pauseRadar: 'Pausa',
         playRadar: 'Riproduci',
+        // Radar progress / forecast labels
+        forecastLabel: 'PREVISIONE',
+        radarNow: 'ORA',
         slowerRadar: 'Più lento',
         fasterRadar: 'Più veloce',
 
@@ -1175,6 +1190,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Atualizar radar',
         pauseRadar: 'Pausar',
         playRadar: 'Reproduzir',
+        // Radar progress / forecast labels
+        forecastLabel: 'PREVISÃO',
+        radarNow: 'AGORA',
         slowerRadar: 'Mais lento',
         fasterRadar: 'Mais rápido',
 
@@ -1375,6 +1393,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Radar verversen',
         pauseRadar: 'Pauze',
         playRadar: 'Afspelen',
+        // Radar progress / forecast labels
+        forecastLabel: 'VOORSPELLING',
+        radarNow: 'NU',
         slowerRadar: 'Langzamer',
         fasterRadar: 'Sneller',
 
@@ -1575,6 +1596,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Odśwież radar',
         pauseRadar: 'Pauza',
         playRadar: 'Odtwórz',
+        // Radar progress / forecast labels
+        forecastLabel: 'PROGNOZA',
+        radarNow: 'TERAZ',
         slowerRadar: 'Wolniej',
         fasterRadar: 'Szybciej',
 
@@ -1775,6 +1799,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Uppdatera radar',
         pauseRadar: 'Pausa',
         playRadar: 'Spela',
+        // Radar progress / forecast labels
+        forecastLabel: 'PROGNOS',
+        radarNow: 'NU',
         slowerRadar: 'Långsammare',
         fasterRadar: 'Snabbare',
 
@@ -1975,6 +2002,9 @@ const TRANSLATIONS = {
         refreshRadar: 'Обновить радар',
         pauseRadar: 'Пауза',
         playRadar: 'Воспроизвести',
+        // Radar progress / forecast labels
+        forecastLabel: 'ПРОГНОЗ',
+        radarNow: 'СЕЙЧАС',
         slowerRadar: 'Медленнее',
         fasterRadar: 'Быстрее',
 
@@ -2175,6 +2205,9 @@ const TRANSLATIONS = {
         refreshRadar: 'レーダーを更新',
         pauseRadar: '一時停止',
         playRadar: '再生',
+        // Radar progress / forecast labels
+        forecastLabel: '予測',
+        radarNow: '現在',
         slowerRadar: '遅く',
         fasterRadar: '速く',
 
@@ -2375,6 +2408,9 @@ const TRANSLATIONS = {
         refreshRadar: '刷新雷达',
         pauseRadar: '暂停',
         playRadar: '播放',
+        // Radar progress / forecast labels
+        forecastLabel: '预报',
+        radarNow: '现在',
         slowerRadar: '较慢',
         fasterRadar: '较快',
 
@@ -2575,6 +2611,9 @@ const TRANSLATIONS = {
         refreshRadar: '레이더 새로고침',
         pauseRadar: '일시정지',
         playRadar: '재생',
+        // Radar progress / forecast labels
+        forecastLabel: '예보',
+        radarNow: '지금',
         slowerRadar: '느리게',
         fasterRadar: '빠르게',
 
@@ -2775,6 +2814,9 @@ const TRANSLATIONS = {
         refreshRadar: 'تحديث الرادار',
         pauseRadar: 'إيقاف مؤقت',
         playRadar: 'تشغيل',
+        // Radar progress / forecast labels
+        forecastLabel: 'توقعات',
+        radarNow: 'الآن',
         slowerRadar: 'أبطأ',
         fasterRadar: 'أسرع',
 
@@ -2975,6 +3017,9 @@ const TRANSLATIONS = {
         refreshRadar: 'रडार ताज़ा करें',
         pauseRadar: 'विराम',
         playRadar: 'चलाएं',
+        // Radar progress / forecast labels
+        forecastLabel: 'पूर्वानुमान',
+        radarNow: 'अभी',
         slowerRadar: 'धीमा',
         fasterRadar: 'तेज़',
 

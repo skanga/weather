@@ -2009,8 +2009,16 @@ function renderAlerts(alerts) {
     });
 }
 
+// Continental US bounding box — used to gate NoAdsRadar forecast fetch.
+// Stricter than the NWS coverage check (which includes AK/HI/PR/Guam);
+// NoAdsRadar covers only the lower-48.
+function inConusBounds(lat, lon) {
+    return lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66;
+}
+
 let radarInterval = null;
 let radarPreloadTimer = null;
+let radarLoadToken = 0;
 
 function renderRadar(lat, lon) {
     if (radarInterval) { clearInterval(radarInterval); radarInterval = null; }
@@ -2044,6 +2052,15 @@ function renderRadar(lat, lon) {
         <div id="radar-container" style="position:relative;width:100%;aspect-ratio:1;background:#1a1a2e;border-radius:8px;overflow:hidden;">
             <div class="loading" style="color:#9ca3af;">Loading radar...</div>
         </div>
+            <div id="radar-progress" class="radar-progress" hidden>
+                <div class="radar-progress-track">
+                    <div class="radar-progress-past"></div>
+                    <div class="radar-progress-future"></div>
+                </div>
+                <div class="radar-progress-marker"></div>
+                <div class="radar-progress-now-line"></div>
+                <div class="radar-progress-now-label">${t('radarNow')}</div>
+            </div>
         <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-top:0.5rem;">
             <div id="radar-time" style="font-size:0.8rem;color:#6b7280;"></div>
             <div class="radar-controls">
@@ -2065,13 +2082,65 @@ function renderRadar(lat, lon) {
     });
 }
 
-async function loadRadar(lat, lon) {
+const NOADSRADAR_BASE = 'https://noadsradar-tilesvc-15838356607.us-central1.run.app';
+
+async function fetchRainviewerPast() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', { signal: controller.signal });
+        if (!res.ok) throw new Error(`status ${res.status}`);
         const data = await res.json();
-        const frames = data.radar.past;
+        return (data.radar?.past || []).map(f => ({ ...f, source: 'past' }));
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function fetchNoadsradarFuture() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+        const res = await fetch(`${NOADSRADAR_BASE}/frames.json`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json();
+        return (data.frames || []).map(f => ({ ...f, source: 'future' }));
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function loadRadar(lat, lon) {
+    const myToken = ++radarLoadToken;
+    try {
+        // Fetch RainViewer always; fetch NoAdsRadar only in CONUS bounds.
+        // NoAdsRadar failures fall back silently to past-only.
+        const fetchFuture = inConusBounds(lat, lon)
+            ? fetchNoadsradarFuture().catch(err => {
+                console.warn('noadsradar:', err?.message || err);
+                return [];
+            })
+            : Promise.resolve([]);
+
+        const [pastFrames, futureFrames] = await Promise.all([
+            fetchRainviewerPast(),
+            fetchFuture
+        ]);
+
+        // Bail if a newer loadRadar call has superseded us
+        if (myToken !== radarLoadToken) return;
+
+        const frames = [...pastFrames, ...futureFrames];
+        const nowIndex = Math.max(0, pastFrames.length - 1);
 
         const container = document.getElementById('radar-container');
+
+        // Guard against both sources returning empty (RainViewer 200 with empty past, no future)
+        if (frames.length === 0) {
+            container.innerHTML = `<div style="text-align:center;padding:2rem;color:#9ca3af;">${t('radarUnavailable')}</div>`;
+            return;
+        }
+
         const zoom = 7;
         const n = Math.pow(2, zoom);
 
@@ -2141,15 +2210,25 @@ async function loadRadar(lat, lon) {
             'opacity:0.7;'
         );
 
-        // Radar layers — only load the latest frame immediately, lazy-load others
+        // Returns the tile-URL builder appropriate for the frame's source.
+        function tileSrcFor(frame) {
+            if (frame.source === 'future') {
+                return (tx, ty) => `${NOADSRADAR_BASE}/tile/${frame.minute}/${zoom}/${tx}/${ty}.png`;
+            }
+            // RainViewer past
+            return (tx, ty) => `https://tilecache.rainviewer.com${frame.path}/256/${zoom}/${tx}/${ty}/2/1_0.png`;
+        }
+
+        // Radar layers — eager-load the "NOW" frame (last past frame).
+        // Forecast and older past tiles defer-load until reached by animation.
         let radarHtml = '';
         frames.forEach((frame, i) => {
-            const isLatest = i === frames.length - 1;
+            const isEager = i === nowIndex;
             radarHtml += buildTileGrid(
-                (tx, ty) => `https://tilecache.rainviewer.com${frame.path}/256/${zoom}/${tx}/${ty}/2/1_0.png`,
-                `opacity:${isLatest ? 1 : 0};transition:opacity 0.3s;`,
-                !isLatest // defer loading for non-visible frames
-            ).replace('<div ', `<div class="radar-frame" data-frame="${i}" `);
+                tileSrcFor(frame),
+                `opacity:${i === nowIndex ? 1 : 0};transition:opacity 0.3s;`,
+                !isEager
+            ).replace('<div ', `<div class="radar-frame" data-frame="${i}" data-source="${frame.source}" `);
         });
 
         // City center marker — simple crosshair
@@ -2177,20 +2256,66 @@ async function loadRadar(lat, lon) {
             };
         });
 
-        // Show timestamp for latest frame
+        // Frame timestamp handles both sources: RainViewer's unix `time` (seconds)
+        // and NoAdsRadar's `valid_utc` ISO string.
+        function frameTime(frame) {
+            const d = frame.source === 'future'
+                ? new Date(frame.valid_utc)
+                : new Date(frame.time * 1000);
+            return Number.isFinite(d.getTime()) ? d : null;
+        }
+
         const timeEl = document.getElementById('radar-time');
         const showFrameTime = (frame) => {
-            const d = new Date(frame.time * 1000);
-            timeEl.textContent = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const d = frameTime(frame);
+            if (!d) {
+                // Bad timestamp — show source label only (or blank)
+                timeEl.textContent = frame.source === 'future' ? t('forecastLabel') : '';
+                return;
+            }
+            const timeStr = d.toLocaleTimeString(getCurrentLang(), { hour: 'numeric', minute: '2-digit' });
+            timeEl.textContent = frame.source === 'future'
+                ? `${timeStr} · ${t('forecastLabel')}`
+                : timeStr;
         };
-        showFrameTime(frames[frames.length - 1]);
+        showFrameTime(frames[nowIndex]);
 
-        // Animate through frames with speed/pause controls
-        let currentFrame = frames.length - 1;
+        // Animate through frames with speed/pause controls.
+        // Start at "NOW" (boundary between past and future) so user sees current
+        // conditions first, then watches the past → future loop.
+        let currentFrame = nowIndex;
         const allFrameEls = container.querySelectorAll('.radar-frame');
+
+        // Wire the progress bar. Only visible if we actually have future frames.
+        const hasFuture = futureFrames.length > 0;
+        const progressEl = document.getElementById('radar-progress');
+        const pastBar = progressEl?.querySelector('.radar-progress-past');
+        const futureBar = progressEl?.querySelector('.radar-progress-future');
+        const nowLine = progressEl?.querySelector('.radar-progress-now-line');
+        const nowLabel = progressEl?.querySelector('.radar-progress-now-label');
+        const markerEl = progressEl?.querySelector('.radar-progress-marker');
+
+        if (progressEl) {
+            progressEl.hidden = !hasFuture;
+            if (hasFuture) {
+                // Past portion width = (nowIndex+1) / total * 100%
+                const pastPct = ((nowIndex + 1) / frames.length) * 100;
+                if (pastBar) pastBar.style.width = `${pastPct}%`;
+                if (nowLine) nowLine.style.left = `calc(${pastPct}% - 1px)`;
+                if (nowLabel) nowLabel.style.left = `${pastPct}%`;
+            }
+        }
+
+        function updateProgressMarker(idx) {
+            if (!hasFuture || !markerEl) return;
+            const pct = ((idx + 0.5) / frames.length) * 100;
+            markerEl.style.left = `${pct}%`;
+        }
+        updateProgressMarker(currentFrame);
+
         const speeds = [2000, 1000, 500, 250, 125];
         const speedLabels = ['0.25x', '0.5x', '1x', '2x', '4x'];
-        let speedIdx = parseInt(localStorage.getItem('radarSpeed') || '2');
+        let speedIdx = parseInt(localStorage.getItem('radarSpeed') || '2', 10);
         if (speedIdx < 0 || speedIdx >= speeds.length) speedIdx = 2;
         let paused = false;
 
@@ -2236,6 +2361,7 @@ async function loadRadar(lat, lon) {
                 loadFrame(allFrameEls[currentFrame]);
                 allFrameEls[currentFrame].style.opacity = '1';
                 showFrameTime(frames[currentFrame]);
+                updateProgressMarker(currentFrame);
                 // After completing first loop, switch to user's speed
                 if (firstLoop && currentFrame === frames.length - 1) {
                     firstLoop = false;
