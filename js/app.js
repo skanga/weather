@@ -795,9 +795,13 @@ function getMoonPhase(date) {
 
 const TEMP_COLOR_THRESHOLD = 5; // °F — don't colorize if range is less than this
 
+// Settings that default to FALSE when not explicitly set. Everything else defaults to true.
+const SETTINGS_DEFAULT_FALSE = new Set(['autoPlayRadar']);
+
 function getSettingsBool(key) {
     const v = localStorage.getItem(key);
-    return v === null ? true : v === 'true';
+    if (v === null) return !SETTINGS_DEFAULT_FALSE.has(key);
+    return v === 'true';
 }
 
 function tempBackground(avg, minAvg, avgRange) {
@@ -2327,7 +2331,12 @@ async function loadRadar(lat, lon) {
         const speedLabels = ['0.25x', '0.5x', '1x', '2x', '4x'];
         let speedIdx = parseInt(localStorage.getItem('radarSpeed') || '2', 10);
         if (speedIdx < 0 || speedIdx >= speeds.length) speedIdx = 2;
-        let paused = false;
+
+        // Auto-play setting (default true). When false, show only the latest
+        // frame, don't preload deferred tiles, don't start the animation.
+        // User can still click play or scrub manually; tiles load on demand.
+        const autoPlay = getSettingsBool('autoPlayRadar');
+        let paused = !autoPlay;
 
         // Load deferred tiles for a frame
         function loadFrame(frameEl) {
@@ -2357,7 +2366,7 @@ async function loadRadar(lat, lon) {
             preloadIdx++;
             radarPreloadTimer = setTimeout(preloadNext, 300);
         }
-        preloadNext();
+        if (autoPlay) preloadNext();
 
         // Single source of truth for switching to a frame.
         // Used by the animation tick AND the progress-bar scrub handler.
@@ -2398,10 +2407,22 @@ async function loadRadar(lat, lon) {
         updateSpeedLabel();
 
         const pauseBtn = document.getElementById('radar-pause');
+        // Reflect initial paused state (autoPlay setting may have started us paused).
+        if (pauseBtn && paused) {
+            pauseBtn.textContent = '▶';
+            pauseBtn.title = t('playRadar');
+        }
         if (pauseBtn) pauseBtn.addEventListener('click', () => {
             paused = !paused;
             pauseBtn.textContent = paused ? '▶' : '⏸';
             pauseBtn.title = paused ? t('playRadar') : t('pauseRadar');
+            // First click of play (preload not yet started): jump to the earliest
+            // frame and kick off the deferred preload so the user sees the full
+            // past → now → future loop from the beginning.
+            if (!paused && preloadIdx === 0 && allFrameEls.length > 0) {
+                setFrame(0);
+                preloadNext();
+            }
         });
 
         // --- Scrub the progress bar (click or drag to change time) ---
@@ -2937,6 +2958,7 @@ document.getElementById('settings-revert').addEventListener('click', () => {
     localStorage.setItem('showNwsLink', 'true');
     localStorage.setItem('showSectionButtons', 'true');
     localStorage.setItem('showTranslateLink', 'true');
+    localStorage.setItem('autoPlayRadar', 'false');
     localStorage.removeItem('sectionPrefs');
     applySettings();
     if (_lastLat !== null) {

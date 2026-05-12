@@ -57,6 +57,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Show NWS Radar link',
         settingShowSectionButtons: 'Show "Show section" buttons when sections are hidden',
         settingTranslateLink: 'Show alert translation link',
+        settingAutoPlayRadar: 'Always auto-play radar',
 
         // Weather codes (WMO)
         wc0: 'Clear sky',
@@ -260,6 +261,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Mostrar enlace al radar NWS',
         settingShowSectionButtons: 'Mostrar botones "Mostrar sección" cuando las secciones están ocultas',
         settingTranslateLink: 'Mostrar enlace de traducción de alertas',
+        settingAutoPlayRadar: 'Reproducir radar automáticamente',
 
         // Weather codes
         wc0: 'Cielo despejado',
@@ -463,6 +465,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Afficher le lien du radar NWS',
         settingShowSectionButtons: 'Afficher les boutons "Afficher la section" lorsque les sections sont masquées',
         settingTranslateLink: 'Afficher le lien de traduction des alertes',
+        settingAutoPlayRadar: 'Lire le radar automatiquement',
 
         // Weather codes
         wc0: 'Ciel dégagé',
@@ -666,6 +669,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'NWS-Radar-Link anzeigen',
         settingShowSectionButtons: '"Bereich anzeigen"-Schaltflächen anzeigen, wenn Bereiche ausgeblendet sind',
         settingTranslateLink: 'Übersetzungslink für Warnungen anzeigen',
+        settingAutoPlayRadar: 'Radar automatisch abspielen',
 
         // Weather codes
         wc0: 'Klarer Himmel',
@@ -869,6 +873,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Mostra link radar NWS',
         settingShowSectionButtons: 'Mostra i pulsanti "Mostra sezione" quando le sezioni sono nascoste',
         settingTranslateLink: 'Mostra link di traduzione delle allerte',
+        settingAutoPlayRadar: 'Riproduci sempre il radar automaticamente',
 
         // Weather codes
         wc0: 'Cielo sereno',
@@ -1072,6 +1077,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Mostrar link do radar NWS',
         settingShowSectionButtons: 'Mostrar botões "Mostrar seção" quando as seções estiverem ocultas',
         settingTranslateLink: 'Mostrar link de tradução de alertas',
+        settingAutoPlayRadar: 'Reproduzir radar automaticamente',
 
         // Weather codes
         wc0: 'Céu limpo',
@@ -1275,6 +1281,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'NWS-radarlink tonen',
         settingShowSectionButtons: '"Sectie tonen"-knoppen tonen wanneer secties verborgen zijn',
         settingTranslateLink: 'Vertaallink voor waarschuwingen tonen',
+        settingAutoPlayRadar: 'Radar altijd automatisch afspelen',
 
         // Weather codes
         wc0: 'Heldere hemel',
@@ -1478,6 +1485,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Pokaż link do radaru NWS',
         settingShowSectionButtons: 'Pokaż przyciski "Pokaż sekcję", gdy sekcje są ukryte',
         settingTranslateLink: 'Pokaż link do tłumaczenia ostrzeżeń',
+        settingAutoPlayRadar: 'Zawsze automatycznie odtwarzaj radar',
 
         // Weather codes
         wc0: 'Bezchmurnie',
@@ -1681,6 +1689,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Visa länk till NWS-radar',
         settingShowSectionButtons: 'Visa "Visa sektion"-knappar när sektioner är dolda',
         settingTranslateLink: 'Visa översättningslänk för varningar',
+        settingAutoPlayRadar: 'Spela alltid upp radar automatiskt',
 
         // Weather codes
         wc0: 'Klar himmel',
@@ -1884,6 +1893,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Показывать ссылку на радар NWS',
         settingShowSectionButtons: 'Показывать кнопки "Показать раздел", когда разделы скрыты',
         settingTranslateLink: 'Показывать ссылку для перевода предупреждений',
+        settingAutoPlayRadar: 'Всегда воспроизводить радар автоматически',
 
         // Weather codes
         wc0: 'Ясное небо',
@@ -2087,6 +2097,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'NWSレーダーリンクを表示',
         settingShowSectionButtons: 'セクションが非表示のときに「セクションを表示」ボタンを表示',
         settingTranslateLink: '警報の翻訳リンクを表示',
+        settingAutoPlayRadar: 'レーダーを常に自動再生',
 
         // Weather codes
         wc0: '快晴',
@@ -2290,6 +2301,7 @@ const TRANSLATIONS = {
         settingNwsLink: '显示NWS雷达链接',
         settingShowSectionButtons: '当部分隐藏时显示"显示部分"按钮',
         settingTranslateLink: '显示警报翻译链接',
+        settingAutoPlayRadar: '始终自动播放雷达',
 
         // Weather codes
         wc0: '晴',
@@ -2493,6 +2505,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'NWS 레이더 링크 표시',
         settingShowSectionButtons: '섹션이 숨겨져 있을 때 "섹션 표시" 버튼 표시',
         settingTranslateLink: '경보 번역 링크 표시',
+        settingAutoPlayRadar: '레이더 자동 재생',
 
         // Weather codes
         wc0: '맑음',
@@ -2696,6 +2709,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'عرض رابط رادار NWS',
         settingShowSectionButtons: 'عرض أزرار "إظهار القسم" عندما تكون الأقسام مخفية',
         settingTranslateLink: 'عرض رابط ترجمة التنبيهات',
+        settingAutoPlayRadar: 'تشغيل الرادار تلقائيًا دائمًا',
 
         // Weather codes
         wc0: 'سماء صافية',
@@ -2899,6 +2913,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'NWS रडार लिंक दिखाएं',
         settingShowSectionButtons: 'जब अनुभाग छिपे हों तो "अनुभाग दिखाएं" बटन दिखाएं',
         settingTranslateLink: 'चेतावनी अनुवाद लिंक दिखाएं',
+        settingAutoPlayRadar: 'हमेशा रडार स्वतः चलाएं',
 
         // Weather codes
         wc0: 'साफ आसमान',
