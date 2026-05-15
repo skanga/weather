@@ -1627,8 +1627,8 @@ function renderDaily(daily, hourly) {
     let dayHeaderHtml = '';
     for (let i = 0; i < days; i++) {
         const date = new Date(daily.time[i] + 'T00:00:00');
-        const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
-        const dateLabel = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+        const dayLabel = date.toLocaleDateString(getCurrentLang(), { weekday: 'short' });
+        const dateLabel = date.toLocaleDateString(getCurrentLang(), { month: 'numeric', day: 'numeric' });
         const info = weatherInfo(daily.weather_code[i]);
         const precip = daily.precipitation_sum[i];
         const minA = Math.min(...avgTemps);
@@ -1708,8 +1708,8 @@ function renderDaily(daily, hourly) {
                     <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
                     ${daily.time.map((t, i) => {
                         const date = new Date(t + 'T00:00:00');
-                        const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
-                        const dateLabel = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+                        const dayLabel = date.toLocaleDateString(getCurrentLang(), { weekday: 'short' });
+                        const dateLabel = date.toLocaleDateString(getCurrentLang(), { month: 'numeric', day: 'numeric' });
                         return `<div class="forecast-footer-day" style="width:${DAY_WIDTH}px;min-width:${DAY_WIDTH}px;">${dayLabel} ${dateLabel}</div>`;
                     }).join('')}
                     <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
@@ -2220,9 +2220,9 @@ async function loadRadar(lat, lon) {
                 return (tx, ty) => `${NOADSRADAR_BASE}/tile/${frame.minute}/${zoom}/${tx}/${ty}.png`;
             }
             // RainViewer past
-            // Color scheme 4 = The Weather Channel (TWC) — classic green→yellow→red
-            // palette that matches NoAdsRadar's forecast tile output.
-            return (tx, ty) => `https://tilecache.rainviewer.com${frame.path}/256/${zoom}/${tx}/${ty}/4/1_0.png`;
+            // Color scheme 2 = Universal Blue, the only scheme RainViewer
+            // currently documents at https://www.rainviewer.com/api/color-schemes.html
+            return (tx, ty) => `https://tilecache.rainviewer.com${frame.path}/256/${zoom}/${tx}/${ty}/2/1_0.png`;
         }
 
         // Radar layers — eager-load the "NOW" frame (last past frame).
@@ -2504,7 +2504,7 @@ function renderSunMoon(daily, lat, lon, utcOffsetSeconds) {
 
     const fmtDate = (d) => {
         if (!d || isNaN(d)) return '';
-        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+        return d.toLocaleDateString(getCurrentLang(), { month: 'long', day: 'numeric' });
     };
 
     // Sun
