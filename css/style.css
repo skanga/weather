@@ -1655,7 +1655,6 @@ body.is-dragging .weather-col:empty {
 
 #radar-section img {
     width: 100%;
-    border-radius: 8px;
 }
 
 /* Sun & Moon */
