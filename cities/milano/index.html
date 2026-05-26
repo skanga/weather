@@ -1,15 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoAdsWeather — Weather without the clutter</title>
-    <meta name="description" content="Fast, ad-free weather forecasts. No tracking, no cookies, no bloat.">
+    <title>Meteo Milano senza pubblicità — NoAdsWeather</title>
+    <meta name="description" content="Previsioni meteo per Milano senza pubblicità, cookie o tracciamento. Dati Open-Meteo, previsioni a 10 giorni, condizioni orarie e radar — tutto gratis.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#111827">
-    <link rel="stylesheet" href="css/style.css">
+        <link rel="canonical" href="https://noadsweather.com/cities/milano/">
+    <link rel="alternate" hreflang="it" href="https://noadsweather.com/cities/milano/">
+    <link rel="alternate" hreflang="en" href="https://noadsweather.com/cities/milan-en/">
+    <link rel="alternate" hreflang="x-default" href="https://noadsweather.com/cities/milan-en/">
+    <script>
+        window._seoCity = {"slug":"milano","lang":"it","lat":45.4642,"lon":9.19,"name":"Milan","displayName":"Milano","country":"IT","region":""};
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
     <script>
         // Auto-resume gate: if the user has the "Remember last city" setting
         // on (default), no URL params are present, and a lastLocation is
@@ -86,9 +93,16 @@
             <section id="moon-section"></section>
             <!-- Other cities — populated by build script on /cities/* pages,
                  hidden on the main app. -->
-            <nav id="other-cities" hidden>
-                <h3 id="other-cities-heading"></h3>
-                <ul></ul>
+            <nav id="other-cities">
+                <h3>Altre città</h3>
+                <ul>
+                    <li><a href="/cities/munchen/">München</a></li>
+                    <li><a href="/cities/roma/">Roma</a></li>
+                    <li><a href="/cities/wien/">Wien</a></li>
+                    <li><a href="/cities/paris/">Paris</a></li>
+                    <li><a href="/cities/barcelona/">Barcelona</a></li>
+                    <li><a href="/cities/amsterdam/">Amsterdam</a></li>
+                </ul>
             </nav>
             <div class="bottom-spacer">
                 <button id="privacy-toggle-weather" class="privacy-link" data-i18n="privacyCookies">Privacy / Cookies</button>
@@ -160,7 +174,7 @@
         Support this site
     </a>
 
-    <script src="js/i18n.js"></script>
-    <script src="js/app.js"></script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/app.js"></script>
 </body>
 </html>

@@ -660,6 +660,90 @@ h1, h2, h3, h4, h5, h6 {
    city. Cleared by app.js (in loadFromURL/showHome) when no longer needed. */
 html[data-auto-resume] #home-view { display: none; }
 
+/* SEO blurb — visible on /cities/* landing pages only. Dismissed permanently
+   via the X button or the inline link, persisted in localStorage. */
+#seo-blurb {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 2.25rem 0.75rem 0.875rem;
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+#seo-blurb p {
+    margin: 0;
+}
+
+#seo-blurb-hide-link {
+    color: var(--text-muted);
+    text-decoration: underline;
+    cursor: pointer;
+    margin-left: 0.35em;
+}
+
+#seo-blurb-hide-link:hover {
+    color: var(--text);
+}
+
+#seo-blurb-close {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem 0.4rem;
+}
+
+#seo-blurb-close:hover {
+    color: var(--text);
+}
+
+/* Other cities navigation — only shown on /cities/* pages, populated by
+   the build script before injection (the JS app reveals it). */
+#other-cities {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+#other-cities h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+}
+
+#other-cities ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+#other-cities li { margin: 0; }
+
+#other-cities a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+#other-cities a:hover {
+    text-decoration: underline;
+}
+
 /* Home View */
 .home-header {
     text-align: center;

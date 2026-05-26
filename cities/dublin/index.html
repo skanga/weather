@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoAdsWeather — Weather without the clutter</title>
-    <meta name="description" content="Fast, ad-free weather forecasts. No tracking, no cookies, no bloat.">
+    <title>Dublin Weather with No Ads — NoAdsWeather</title>
+    <meta name="description" content="Get the Dublin weather forecast without ads, cookies, or tracking. Open-Meteo data, 10-day forecast, hourly conditions, and radar — all free.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#111827">
-    <link rel="stylesheet" href="css/style.css">
+        <link rel="canonical" href="https://noadsweather.com/cities/dublin/">
+    <link rel="alternate" hreflang="en" href="https://noadsweather.com/cities/dublin/">
+    <link rel="alternate" hreflang="x-default" href="https://noadsweather.com/cities/dublin/">
+    <script>
+        window._seoCity = {"slug":"dublin","lang":"en","lat":53.3498,"lon":-6.2603,"name":"Dublin","displayName":"Dublin","country":"IE","region":""};
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
     <script>
         // Auto-resume gate: if the user has the "Remember last city" setting
         // on (default), no URL params are present, and a lastLocation is
@@ -86,9 +92,16 @@
             <section id="moon-section"></section>
             <!-- Other cities — populated by build script on /cities/* pages,
                  hidden on the main app. -->
-            <nav id="other-cities" hidden>
-                <h3 id="other-cities-heading"></h3>
-                <ul></ul>
+            <nav id="other-cities">
+                <h3>Other cities</h3>
+                <ul>
+                    <li><a href="/cities/london/">London</a></li>
+                    <li><a href="/cities/amsterdam-en/">Amsterdam</a></li>
+                    <li><a href="/cities/paris-en/">Paris</a></li>
+                    <li><a href="/cities/berlin-en/">Berlin</a></li>
+                    <li><a href="/cities/munich-en/">Munich</a></li>
+                    <li><a href="/cities/milan-en/">Milan</a></li>
+                </ul>
             </nav>
             <div class="bottom-spacer">
                 <button id="privacy-toggle-weather" class="privacy-link" data-i18n="privacyCookies">Privacy / Cookies</button>
@@ -160,7 +173,7 @@
         Support this site
     </a>
 
-    <script src="js/i18n.js"></script>
-    <script src="js/app.js"></script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/app.js"></script>
 </body>
 </html>

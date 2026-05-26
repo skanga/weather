@@ -3056,6 +3056,89 @@ function getLocationFromStorage() {
     };
 }
 
+// SEO city landing page bootstrap. Generated /cities/* pages include an
+// inline <script> setting window._seoCity = { lang, lat, lon, name, ... }.
+// When present, we:
+//   1. Force the UI language to the page's language IF the user has no
+//      explicit language preference saved. Returning users with a preference
+//      keep theirs (so the language picker works on city pages, and a
+//      French-speaking user landing on /cities/lisboa/ from search isn't
+//      forced into Portuguese on every visit).
+//   2. Bootstrap directly into the weather view (skip home view).
+//   3. Override the H1 with the translated city-page title.
+//   4. Show the dismissible SEO blurb (unless already hidden).
+//   5. Save lastLocation so auto-resume returns the user to this city.
+// Returns true if SEO mode was activated, false otherwise.
+function initSeoCity() {
+    const seo = window._seoCity;
+    if (!seo || typeof seo !== 'object') return false;
+    // Validate the required fields. Bail silently if malformed.
+    if (!seo.lang || !Number.isFinite(seo.lat) || !Number.isFinite(seo.lon) || !seo.name) {
+        return false;
+    }
+
+    // 1. Language override (in-memory only — does not write to localStorage).
+    //    Only applies if the user has no explicit preference. This makes the
+    //    in-app language picker effective on city pages (after the picker
+    //    writes to localStorage and reloads, hasExplicitPref is true, the
+    //    override is skipped, and the user's pick wins). The HTML <title>
+    //    and <meta description> are baked in at build time in the URL's
+    //    language regardless — that's what Google indexes.
+    const hasExplicitPref = !!localStorage.getItem('language');
+    if (!hasExplicitPref && typeof setLanguageOverride === 'function') {
+        setLanguageOverride(seo.lang);
+    }
+
+    // Re-run translations now that the language is set
+    applyTranslations();
+
+    // 2. Bootstrap weather view directly
+    const location = {
+        name: seo.name,
+        region: seo.region || '',
+        country: seo.country || '',
+        lat: seo.lat,
+        lon: seo.lon,
+    };
+    setUnitsForCountry(location.country);
+    showWeather(location, '');
+    fetchAllWeatherData(location.lat, location.lon, location.country, location.region);
+    saveLastLocation('', location);
+
+    // 3. Override the H1 with translated city-page title
+    const cityName = seo.displayName || seo.name;
+    locationName.textContent = t('cityPageTitle', { city: cityName });
+
+    // 4. Render the SEO blurb unless dismissed
+    renderSeoBlurb(cityName);
+
+    // 5. Release the auto-resume gate (the inline <head> script may have set it)
+    document.documentElement.removeAttribute('data-auto-resume');
+
+    return true;
+}
+
+function renderSeoBlurb(cityName) {
+    if (localStorage.getItem('hideCitySeoBlurb') === 'true') return;
+    const el = document.getElementById('seo-blurb');
+    const textEl = document.getElementById('seo-blurb-text');
+    const linkEl = document.getElementById('seo-blurb-hide-link');
+    const closeBtn = document.getElementById('seo-blurb-close');
+    if (!el || !textEl || !linkEl || !closeBtn) return;
+
+    textEl.textContent = t('cityPageSeoBlurb', { city: cityName });
+    linkEl.textContent = t('cityPageHideBlurb');
+    el.hidden = false;
+
+    const dismiss = (e) => {
+        if (e) e.preventDefault();
+        localStorage.setItem('hideCitySeoBlurb', 'true');
+        el.hidden = true;
+    };
+    closeBtn.addEventListener('click', dismiss);
+    linkEl.addEventListener('click', dismiss);
+}
+
 async function loadFromURL() {
     let urlData = getLocationFromURL();
     // No URL params? Try the saved "last city" if the setting allows it.
@@ -3104,7 +3187,11 @@ applyTranslations();
 })();
 
 // Load from URL on page load
-loadFromURL();
+// SEO landing page takes priority over URL params / storage rehydration.
+// If not in SEO mode, fall through to the existing URL/storage flow.
+if (!initSeoCity()) {
+    loadFromURL();
+}
 
 // Init drag-to-reorder (event delegation, works across re-renders)
 initSectionDrag();
