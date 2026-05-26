@@ -85,8 +85,6 @@ function buildPage(city, lang, slug) {
         region: city.region || '',
     };
 
-    const otherCities = pickOtherCities(city, lang, cities);
-
     return {
         slug,
         lang,
@@ -94,7 +92,6 @@ function buildPage(city, lang, slug) {
         title,
         description,
         seoCity,
-        otherCities,
         // For hreflang we need both URLs (native + en variant)
         nativeUrl: `${SITE_URL}/cities/${city.slug}/`,
         enUrl: city.enSlug ? `${SITE_URL}/cities/${city.enSlug}/` : null,
@@ -135,17 +132,6 @@ function renderTemplate(page) {
         '<script src="/js/i18n.js"></script>');
     html = html.replace(/<script src="js\/app\.js"><\/script>/,
         '<script src="/js/app.js"></script>');
-
-    // Populate <nav id="other-cities">
-    const otherCitiesHtml = page.otherCities
-        .map(o => `<li><a href="/cities/${escapeAttr(o.slug)}/">${escapeHtml(o.name)}</a></li>`)
-        .join('\n                    ');
-    const otherCitiesHeading = otherCitiesHeadingText(page.lang);
-    // Regex tolerates either LF or CRLF line endings in the source template.
-    html = html.replace(
-        /<nav id="other-cities" hidden>\r?\n\s*<h3 id="other-cities-heading"><\/h3>\r?\n\s*<ul><\/ul>\r?\n\s*<\/nav>/,
-        `<nav id="other-cities">\n                <h3>${escapeHtml(otherCitiesHeading)}</h3>\n                <ul>\n                    ${otherCitiesHtml}\n                </ul>\n            </nav>`
-    );
 
     return html;
 }
@@ -192,63 +178,6 @@ function writeSitemap(urls, variantGroups) {
     }
     lines.push('</urlset>');
     fs.writeFileSync(SITEMAP_XML, lines.join('\n') + '\n', 'utf8');
-}
-
-function pickOtherCities(currentCity, currentLang, allCities) {
-    // Pick up to 6 other cities for the internal link block.
-    // Prefer same continent / nearby coords for relevance.
-    const others = allCities
-        .filter(c => c.slug !== currentCity.slug)
-        .map(c => ({
-            ...c,
-            distance: haversine(currentCity.lat, currentCity.lon, c.lat, c.lon),
-        }))
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 6);
-
-    // Choose URL + display name for the current page's language preference.
-    return others.map(o => {
-        // Use the variant matching the current page's language if it exists,
-        // otherwise fall back to native, then English.
-        let slug = o.slug;
-        let name = o.displayName[currentLang] || o.displayName[o.nativeLang] || o.displayName.en;
-        if (currentLang === 'en' && o.enSlug) {
-            slug = o.enSlug;
-            name = o.displayName.en;
-        }
-        return { slug, name };
-    });
-}
-
-function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a = Math.sin(dLat/2) ** 2 +
-              Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-              Math.sin(dLon/2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function otherCitiesHeadingText(lang) {
-    const headings = {
-        en: 'Other cities',
-        es: 'Otras ciudades',
-        fr: 'Autres villes',
-        de: 'Andere Städte',
-        it: 'Altre città',
-        pt: 'Outras cidades',
-        nl: 'Andere steden',
-        pl: 'Inne miasta',
-        sv: 'Andra städer',
-        ru: 'Другие города',
-        ja: '他の都市',
-        zh: '其他城市',
-        ko: '다른 도시',
-        ar: 'مدن أخرى',
-        hi: 'अन्य शहर',
-    };
-    return headings[lang] || headings.en;
 }
 
 // === Tiny escape helpers ====================================================

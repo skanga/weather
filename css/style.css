@@ -706,44 +706,6 @@ html[data-auto-resume] #home-view { display: none; }
     color: var(--text);
 }
 
-/* Other cities navigation — only shown on /cities/* pages, populated by
-   the build script before injection (the JS app reveals it). */
-#other-cities {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-}
-
-#other-cities h3 {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0 0 0.5rem;
-    font-weight: 600;
-}
-
-#other-cities ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-}
-
-#other-cities li { margin: 0; }
-
-#other-cities a {
-    color: var(--accent);
-    text-decoration: none;
-    font-size: 0.9rem;
-}
-
-#other-cities a:hover {
-    text-decoration: underline;
-}
-
 /* Home View */
 .home-header {
     text-align: center;
