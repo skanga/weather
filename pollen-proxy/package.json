@@ -1,0 +1,9 @@
+{
+    "name": "pollen-proxy",
+    "version": "1.0.0",
+    "main": "index.js",
+    "engines": { "node": "24" },
+    "dependencies": {
+        "@google-cloud/functions-framework": "^3.4.0"
+    }
+}
