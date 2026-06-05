@@ -95,10 +95,14 @@ function buildPage(city, lang, slug) {
         title,
         description,
         seoCity,
-        // For hreflang we need both URLs (native + en variant)
+        // For hreflang we need both URLs (native + en variant). nativeLang
+        // is preserved so the alternates on the -en variant page point at
+        // the native URL with the *native* hreflang (not "en"), avoiding
+        // duplicate hreflang="en" entries that Google treats as invalid.
         nativeUrl: `${SITE_URL}/cities/${city.slug}/`,
         enUrl: city.enSlug ? `${SITE_URL}/cities/${city.enSlug}/` : null,
         isNativeEn: city.nativeLang === 'en',
+        nativeLang: city.nativeLang,
     };
 }
 
@@ -143,9 +147,12 @@ function buildHeadInjection(page) {
     const lines = [
         `    <link rel="canonical" href="${escapeAttr(page.canonical)}">`,
     ];
-    // hreflang only relevant if there's a sibling variant
+    // hreflang only relevant if there's a sibling variant. Use page.nativeLang
+    // (the language of nativeUrl) rather than page.lang (the language of the
+    // page being generated) — otherwise the en-variant page emits two
+    // hreflang="en" alternates pointing at different URLs.
     if (page.enUrl) {
-        lines.push(`    <link rel="alternate" hreflang="${escapeAttr(page.lang)}" href="${escapeAttr(page.nativeUrl)}">`);
+        lines.push(`    <link rel="alternate" hreflang="${escapeAttr(page.nativeLang)}" href="${escapeAttr(page.nativeUrl)}">`);
         lines.push(`    <link rel="alternate" hreflang="en" href="${escapeAttr(page.enUrl)}">`);
         lines.push(`    <link rel="alternate" hreflang="x-default" href="${escapeAttr(page.enUrl)}">`);
     } else if (page.isNativeEn) {

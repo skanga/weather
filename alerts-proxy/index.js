@@ -4,6 +4,28 @@ const CACHE = new Map(); // key: "lat,lon" (2 decimals) → { at, data }
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_CACHE_ENTRIES = 1000; // prevent unbounded growth on long-lived instances
 
+// Origin/Referer gate — CORS only protects browsers. Without this, any
+// server-side caller can drain the metered OpenWeatherMap quota tied to
+// our API key. OPTIONS preflight is whitelisted earlier (browsers may
+// omit Origin on preflight).
+const ALLOWED_HOSTS = new Set(['noadsweather.com', 'www.noadsweather.com']);
+
+function isAllowedRequest(req) {
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
+    try {
+        if (origin) {
+            const host = new URL(origin).hostname;
+            if (ALLOWED_HOSTS.has(host)) return true;
+        }
+        if (referer) {
+            const host = new URL(referer).hostname;
+            if (ALLOWED_HOSTS.has(host)) return true;
+        }
+    } catch (e) { /* malformed URL — fall through to deny */ }
+    return false;
+}
+
 function cacheSet(key, data) {
     // Evict oldest (insertion order) if at capacity
     if (CACHE.size >= MAX_CACHE_ENTRIES && !CACHE.has(key)) {
@@ -47,6 +69,7 @@ functions.http('alerts', async (req, res) => {
     res.set('Access-Control-Allow-Headers', 'Content-Type');
     res.set('Access-Control-Max-Age', '3600');
     if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (!isAllowedRequest(req)) { res.status(403).json({ error: 'Forbidden' }); return; }
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
     const { lat, lon } = req.body || {};
@@ -82,7 +105,9 @@ functions.http('alerts', async (req, res) => {
         clearTimeout(timeout);
 
         if (!upstream.ok) {
-            console.error(`alerts-proxy: upstream status ${upstream.status} for ${cacheKey}`);
+            // Note: deliberately omit cacheKey (contains lat/lon) so coordinates
+            // aren't persisted alongside Cloud Run's auto-captured remoteIp.
+            console.error(`alerts-proxy: upstream status ${upstream.status}`);
             if (cached) { res.json(cached.data); return; }
             res.json({ features: [] });
             return;

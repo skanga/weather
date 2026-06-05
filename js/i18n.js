@@ -3170,21 +3170,21 @@ const LANGUAGE_NAMES = {
 };
 
 const LANGUAGE_FLAGS = {
-    en: 'img/flags/en.png',
-    es: 'img/flags/es.png',
-    fr: 'img/flags/fr.png',
-    de: 'img/flags/de.png',
-    it: 'img/flags/it.png',
-    pt: 'img/flags/pt-br.png',
-    nl: 'img/flags/nl.png',
-    pl: 'img/flags/pl.png',
-    sv: 'img/flags/sv.png',
-    ru: 'img/flags/ru.png',
-    ja: 'img/flags/ja.png',
-    zh: 'img/flags/zh.png',
-    ko: 'img/flags/ko.png',
-    ar: 'img/flags/ar.png',
-    hi: 'img/flags/hi.png'
+    en: '/img/flags/en.png',
+    es: '/img/flags/es.png',
+    fr: '/img/flags/fr.png',
+    de: '/img/flags/de.png',
+    it: '/img/flags/it.png',
+    pt: '/img/flags/pt-br.png',
+    nl: '/img/flags/nl.png',
+    pl: '/img/flags/pl.png',
+    sv: '/img/flags/sv.png',
+    ru: '/img/flags/ru.png',
+    ja: '/img/flags/ja.png',
+    zh: '/img/flags/zh.png',
+    ko: '/img/flags/ko.png',
+    ar: '/img/flags/ar.png',
+    hi: '/img/flags/hi.png'
 };
 
 // Per-page-load language override. Used by SEO city landing pages to

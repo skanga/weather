@@ -6,6 +6,26 @@
 
 const IMPERIAL_COUNTRIES = ['United States', 'Liberia', 'Myanmar'];
 
+// ISO 3166-1 alpha-2 → full English name. Used to normalize 2-letter codes
+// from scripts/cities.json so they match what Open-Meteo's geocoding API
+// returns (full names like "United States"). IMPERIAL_COUNTRIES and the
+// NWS-routing check in fetchAlerts both rely on full names — keep entries
+// here in sync with anything that lands in cities.json.
+const COUNTRY_NAMES = {
+    US: 'United States', CA: 'Canada', GB: 'United Kingdom', IE: 'Ireland',
+    AU: 'Australia', NZ: 'New Zealand', MX: 'Mexico', ES: 'Spain',
+    AR: 'Argentina', PE: 'Peru', CO: 'Colombia', PT: 'Portugal',
+    BR: 'Brazil', FR: 'France', DE: 'Germany', AT: 'Austria',
+    IT: 'Italy', NL: 'Netherlands', PL: 'Poland', SE: 'Sweden',
+    RU: 'Russia', JP: 'Japan', CN: 'China', KR: 'South Korea',
+    IN: 'India', AE: 'United Arab Emirates', HK: 'Hong Kong',
+    SG: 'Singapore', ZA: 'South Africa',
+};
+
+function normalizeCountry(c) {
+    return COUNTRY_NAMES[c] || c || '';
+}
+
 let units = {
     temp: 'fahrenheit',
     wind: 'mph',
@@ -3092,11 +3112,16 @@ function initSeoCity() {
     // Re-run translations now that the language is set
     applyTranslations();
 
-    // 2. Bootstrap weather view directly
+    // 2. Bootstrap weather view directly.
+    //    Normalize the country code: cities.json uses ISO codes ("US"), but
+    //    setUnitsForCountry and fetchAlerts compare against full names
+    //    ("United States") to match what geocoding returns. Without this,
+    //    every US SEO landing page would default to metric and route US
+    //    alerts through OWM instead of NWS.
     const location = {
         name: seo.name,
         region: seo.region || '',
-        country: seo.country || '',
+        country: normalizeCountry(seo.country),
         lat: seo.lat,
         lon: seo.lon,
     };
@@ -3211,9 +3236,9 @@ initChartDrag();
     // Button text: "Language: [flag(s)] <lang name>"
     let btnFlagHtml;
     if (curLang === 'en') {
-        btnFlagHtml = `<img src="img/flags/en.png" class="lang-btn-flag" alt="US"><img src="img/flags/gb.png" class="lang-btn-flag" alt="UK">`;
+        btnFlagHtml = `<img src="/img/flags/en.png" class="lang-btn-flag" alt="US"><img src="/img/flags/gb.png" class="lang-btn-flag" alt="UK">`;
     } else if (curLang === 'pt') {
-        btnFlagHtml = `<img src="img/flags/pt-br.png" class="lang-btn-flag" alt="BR"><img src="img/flags/pt-eu.png" class="lang-btn-flag" alt="PT">`;
+        btnFlagHtml = `<img src="/img/flags/pt-br.png" class="lang-btn-flag" alt="BR"><img src="/img/flags/pt-eu.png" class="lang-btn-flag" alt="PT">`;
     } else {
         btnFlagHtml = `<img src="${LANGUAGE_FLAGS[curLang]}" class="lang-btn-flag" alt="">`;
     }
@@ -3224,9 +3249,9 @@ initChartDrag();
         const checked = code === curLang ? 'checked' : '';
         let flagHtml;
         if (code === 'en') {
-            flagHtml = `<span class="lang-flags"><img src="img/flags/en.png" alt="US"><img src="img/flags/gb.png" alt="UK"></span>`;
+            flagHtml = `<span class="lang-flags"><img src="/img/flags/en.png" alt="US"><img src="/img/flags/gb.png" alt="UK"></span>`;
         } else if (code === 'pt') {
-            flagHtml = `<span class="lang-flags"><img src="img/flags/pt-br.png" alt="BR"><img src="img/flags/pt-eu.png" alt="PT"></span>`;
+            flagHtml = `<span class="lang-flags"><img src="/img/flags/pt-br.png" alt="BR"><img src="/img/flags/pt-eu.png" alt="PT"></span>`;
         } else {
             flagHtml = `<img class="lang-flag" src="${LANGUAGE_FLAGS[code]}" alt="">`;
         }
