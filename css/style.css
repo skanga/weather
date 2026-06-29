@@ -1422,6 +1422,12 @@ body.is-dragging .weather-col:empty {
     flex-shrink: 0;
 }
 
+.hourly-wind {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
 /* Daily forecast - unified scroll */
 .forecast-scroll-outer {
     overflow-x: auto;

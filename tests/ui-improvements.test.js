@@ -15,5 +15,8 @@ assert.match(app, /precipitation_probability\.slice\(i \* 24/);
 assert.match(app, /function formatAlertTime/);
 assert.match(app, /alert-meta/);
 assert.match(app, /localStorage\.getItem\('layoutLocked'\) !== 'false'/);
+assert.match(app, /hourly\.wind_speed_10m\[i\]/);
+assert.match(app, /windUnit\(\)/);
 assert.match(css, /\.updated-at/);
 assert.match(css, /\.alert-meta/);
+assert.match(css, /\.hourly-wind/);

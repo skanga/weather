@@ -1474,11 +1474,13 @@ function renderHourly(hourly) {
             ? hour.toString().padStart(2, '0') + ':00'
             : (hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`);
         const info = weatherInfo(hourly.weather_code[i], isHourNight(hourly.time[i]));
+        const wind = Math.round(hourly.wind_speed_10m[i]);
         html += `
             <div class="hourly-item">
                 <div>${label}</div>
                 <div style="font-size:1.3rem;">${info.icon}</div>
                 <div style="font-weight:600;">${Math.round(hourly.temperature_2m[i])}°</div>
+                <div class="hourly-wind">${wind} ${windUnit()}</div>
             </div>
         `;
     }
