@@ -4,11 +4,21 @@ const CACHE = new Map(); // key: "lat,lon" (2 decimals) → { at, data }
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_CACHE_ENTRIES = 1000; // prevent unbounded growth on long-lived instances
 
-// Origin/Referer gate — CORS only protects browsers. Without this, any
-// server-side caller can drain the metered OpenWeatherMap quota tied to
-// our API key. OPTIONS preflight is whitelisted earlier (browsers may
-// omit Origin on preflight).
+// Weak browser-origin filter. This is not quota protection: non-browser
+// callers can spoof Origin/Referer. Real abuse control belongs at the
+// platform/API layer. OPTIONS preflight is whitelisted earlier because
+// browsers may omit Origin on preflight.
 const ALLOWED_HOSTS = new Set(['noadsweather.com', 'www.noadsweather.com']);
+const DEFAULT_CORS_ORIGIN = 'https://noadsweather.com';
+
+function getCorsOrigin(req) {
+    const origin = req.headers.origin || '';
+    try {
+        const host = new URL(origin).hostname;
+        if (ALLOWED_HOSTS.has(host)) return origin;
+    } catch (e) { /* malformed/missing Origin — use default */ }
+    return DEFAULT_CORS_ORIGIN;
+}
 
 function isAllowedRequest(req) {
     const origin = req.headers.origin || '';
@@ -38,10 +48,9 @@ function titleCase(s) {
     return (s || '').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Dedupe by (event + description), then keep only the most recent
-// alert per event type. Returns filtered array.
-function dedupeAndLatest(alerts, getEvent, getDesc, getStart) {
-    // Dedupe
+// Dedupe exact repeated alerts without hiding distinct active alerts that
+// happen to share the same event type.
+function dedupeAlerts(alerts, getEvent, getDesc) {
     const seen = new Set();
     const unique = [];
     for (const a of alerts) {
@@ -50,21 +59,22 @@ function dedupeAndLatest(alerts, getEvent, getDesc, getStart) {
         seen.add(k);
         unique.push(a);
     }
-    // Latest per event type
-    const latestByEvent = new Map();
-    for (const a of unique) {
-        const key = (getEvent(a) || '').toLowerCase();
-        const existing = latestByEvent.get(key);
-        if (!existing || (getStart(a) || 0) > (getStart(existing) || 0)) {
-            latestByEvent.set(key, a);
-        }
-    }
-    return Array.from(latestByEvent.values());
+    return unique;
+}
+
+function activeCachedAlerts(cached) {
+    if (!cached || !cached.data || !Array.isArray(cached.data.features)) return null;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const features = cached.data.features.filter(f => {
+        const end = f.properties && f.properties.end;
+        return !end || end >= nowSec;
+    });
+    return features.length ? { features } : null;
 }
 
 functions.http('alerts', async (req, res) => {
     // CORS
-    res.set('Access-Control-Allow-Origin', 'https://noadsweather.com');
+    res.set('Access-Control-Allow-Origin', getCorsOrigin(req));
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
     res.set('Access-Control-Max-Age', '3600');
@@ -108,7 +118,8 @@ functions.http('alerts', async (req, res) => {
             // Note: deliberately omit cacheKey (contains lat/lon) so coordinates
             // aren't persisted alongside Cloud Run's auto-captured remoteIp.
             console.error(`alerts-proxy: upstream status ${upstream.status}`);
-            if (cached) { res.json(cached.data); return; }
+            const fallback = activeCachedAlerts(cached);
+            if (fallback) { res.json(fallback); return; }
             res.json({ features: [] });
             return;
         }
@@ -119,11 +130,10 @@ functions.http('alerts', async (req, res) => {
         const nowSec = Math.floor(Date.now() / 1000);
         const active = alerts.filter(a => !a.end || a.end >= nowSec);
 
-        const filtered = dedupeAndLatest(
+        const filtered = dedupeAlerts(
             active,
             a => a.event,
-            a => a.description,
-            a => a.start
+            a => a.description
         );
 
         const features = filtered.map(a => {
@@ -147,7 +157,10 @@ functions.http('alerts', async (req, res) => {
         res.json(result);
     } catch (err) {
         console.error('alerts-proxy: upstream error:', err?.name, err?.message);
-        if (cached) { res.json(cached.data); return; }
+        const fallback = activeCachedAlerts(cached);
+        if (fallback) { res.json(fallback); return; }
         res.json({ features: [] });
     }
 });
+
+module.exports = { activeCachedAlerts, dedupeAlerts, getCorsOrigin, isAllowedRequest };

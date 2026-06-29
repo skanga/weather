@@ -4,11 +4,21 @@ const CACHE = new Map(); // key: "lat,lon" (2 decimals) → { at, data }
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (pollen data is daily; longer cache is fine)
 const MAX_CACHE_ENTRIES = 1000; // prevent unbounded growth on long-lived instances
 
-// Origin/Referer gate — CORS only protects browsers. Without this, any
-// server-side caller can drain the metered Google Pollen API quota tied to
-// our API key. OPTIONS preflight is whitelisted earlier (browsers may
-// omit Origin on preflight).
+// Weak browser-origin filter. This is not quota protection: non-browser
+// callers can spoof Origin/Referer. Real abuse control belongs at the
+// platform/API layer. OPTIONS preflight is whitelisted earlier because
+// browsers may omit Origin on preflight.
 const ALLOWED_HOSTS = new Set(['noadsweather.com', 'www.noadsweather.com']);
+const DEFAULT_CORS_ORIGIN = 'https://noadsweather.com';
+
+function getCorsOrigin(req) {
+    const origin = req.headers.origin || '';
+    try {
+        const host = new URL(origin).hostname;
+        if (ALLOWED_HOSTS.has(host)) return origin;
+    } catch (e) { /* malformed/missing Origin — use default */ }
+    return DEFAULT_CORS_ORIGIN;
+}
 
 function isAllowedRequest(req) {
     const origin = req.headers.origin || '';
@@ -36,7 +46,7 @@ function cacheSet(key, data) {
 
 functions.http('pollenProxy', async (req, res) => {
     // CORS
-    res.set('Access-Control-Allow-Origin', 'https://noadsweather.com');
+    res.set('Access-Control-Allow-Origin', getCorsOrigin(req));
     res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
     res.set('Access-Control-Max-Age', '3600');
@@ -92,3 +102,5 @@ functions.http('pollenProxy', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch pollen data' });
     }
 });
+
+module.exports = { getCorsOrigin, isAllowedRequest };

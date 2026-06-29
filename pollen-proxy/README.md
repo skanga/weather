@@ -5,7 +5,7 @@ Cloud Run function that proxies Google Pollen API requests for noadsweather.com.
 ## Why this exists
 
 - **Hides the Google Pollen API key** from the browser (where it would be exposed to scraping and abuse).
-- **Enforces an Origin/Referer check** so only requests from noadsweather.com can drain the metered API quota.
+- **Applies a weak Origin/Referer browser filter** for noadsweather.com. This is not quota protection because non-browser callers can spoof those headers.
 - **Caches responses for 1 hour** to reduce API quota usage (pollen data is daily, so even longer would be fine; client-side localStorage already does per-day caching).
 - **Does not log IPs or coordinates** in application code — and the project's GCP logging exclusions strip platform-level request logs as well.
 

@@ -1586,6 +1586,7 @@ async function loadPollenData(lat, lon) {
 
     try {
         const res = await fetch(`${POLLEN_PROXY_URL}?lat=${lat}&lon=${lon}`);
+        if (!res.ok) throw new Error('Pollen request failed');
         const data = await res.json();
         localStorage.setItem(cacheKey, JSON.stringify(data));
         displayPollenData(data);
