@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This project is intentionally simple â
 
 - **No bloat.** Every byte matters. No frameworks, no runtime npm packages, no bundlers.
 - **No tracking.** No analytics, no cookies, no fingerprinting. Ever.
-- **Free APIs only.** All weather data must come from free, no-API-key-required sources (except the pollen proxy for Non-EU locations, which keeps the key server-side).
+- **Free APIs only.** All weather data must come from free, no-API-key-required sources.
 - **Fast.** The site should load in under 1 second on any connection.
 - **Privacy first.** No user data is collected, stored, or transmitted beyond what's needed to fetch weather.
 
@@ -63,7 +63,6 @@ There's no test suite (yet). Test manually:
 - Toggle F/C and 12H/24H
 - Drag sections to reorder
 - Minimize and hide sections
-- Check pollen data loads (if available for your location)
 - Test on mobile
 - Test the radar animation controls
 

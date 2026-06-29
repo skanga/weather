@@ -21,7 +21,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Hourly Forecast',
         tenDayForecast: '10-Day Forecast',
         radar: 'Radar',
-        pollen: 'Pollen',
         sun: 'Sun',
         moon: 'Moon',
         weatherAlerts: '⚠️ Weather Alerts',
@@ -38,7 +37,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Unlock layout',
         settings: 'Settings',
         restoreDefaultLayout: 'Restore Default Layout',
-        seePollenData: 'See pollen data',
         feelsLike: 'Feels like',
         humidity: 'Humidity',
         dewPoint: 'Dew Point',
@@ -145,7 +143,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Loading radar...',
         refreshingRadar: 'Refreshing radar...',
         radarUnavailable: 'Radar unavailable',
-        pollenDataUnavailable: 'Pollen data unavailable for this location',
 
         // Astronomy section labels
         sunrise: 'Sunrise',
@@ -212,12 +209,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Very Unhealthy',
         aqiHazardous: 'Hazardous',
 
-        // Pollen level labels
-        pollenLow: 'Low',
-        pollenLowMed: 'Low-Medium',
-        pollenMedium: 'Medium',
-        pollenHigh: 'High',
-        pollenVeryHigh: 'Very High',
 
         // Misc short labels
         highTemp: 'High',
@@ -241,7 +232,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Pronóstico por hora',
         tenDayForecast: 'Pronóstico de 10 días',
         radar: 'Radar',
-        pollen: 'Polen',
         sun: 'Sol',
         moon: 'Luna',
         weatherAlerts: '⚠️ Alertas meteorológicas',
@@ -258,7 +248,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Desbloquear diseño',
         settings: 'Configuración',
         restoreDefaultLayout: 'Restaurar diseño predeterminado',
-        seePollenData: 'Ver datos de polen',
         feelsLike: 'Sensación',
         humidity: 'Humedad',
         dewPoint: 'Punto de rocío',
@@ -365,7 +354,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Cargando radar...',
         refreshingRadar: 'Actualizando radar...',
         radarUnavailable: 'Radar no disponible',
-        pollenDataUnavailable: 'Datos de polen no disponibles para esta ubicación',
 
         // Astronomy section labels
         sunrise: 'Amanecer',
@@ -432,12 +420,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Muy insalubre',
         aqiHazardous: 'Peligroso',
 
-        // Pollen levels
-        pollenLow: 'Bajo',
-        pollenLowMed: 'Bajo-Medio',
-        pollenMedium: 'Medio',
-        pollenHigh: 'Alto',
-        pollenVeryHigh: 'Muy alto',
 
         // Misc
         highTemp: 'Máx',
@@ -461,7 +443,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Prévisions horaires',
         tenDayForecast: 'Prévisions sur 10 jours',
         radar: 'Radar',
-        pollen: 'Pollen',
         sun: 'Soleil',
         moon: 'Lune',
         weatherAlerts: '⚠️ Alertes météo',
@@ -478,7 +459,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Déverrouiller la mise en page',
         settings: 'Paramètres',
         restoreDefaultLayout: 'Restaurer la mise en page par défaut',
-        seePollenData: 'Voir les données du pollen',
         feelsLike: 'Ressenti',
         humidity: 'Humidité',
         dewPoint: 'Point de rosée',
@@ -585,7 +565,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Chargement du radar...',
         refreshingRadar: 'Actualisation du radar...',
         radarUnavailable: 'Radar indisponible',
-        pollenDataUnavailable: 'Données de pollen indisponibles pour cet emplacement',
 
         // Astronomy section labels
         sunrise: 'Lever du soleil',
@@ -652,12 +631,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Très malsain',
         aqiHazardous: 'Dangereux',
 
-        // Pollen levels
-        pollenLow: 'Faible',
-        pollenLowMed: 'Faible-Moyen',
-        pollenMedium: 'Moyen',
-        pollenHigh: 'Élevé',
-        pollenVeryHigh: 'Très élevé',
 
         // Misc
         highTemp: 'Max',
@@ -681,7 +654,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Stündliche Vorhersage',
         tenDayForecast: '10-Tage-Vorhersage',
         radar: 'Radar',
-        pollen: 'Pollen',
         sun: 'Sonne',
         moon: 'Mond',
         weatherAlerts: '⚠️ Wetterwarnungen',
@@ -698,7 +670,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Layout entsperren',
         settings: 'Einstellungen',
         restoreDefaultLayout: 'Standardlayout wiederherstellen',
-        seePollenData: 'Pollendaten anzeigen',
         feelsLike: 'Gefühlt',
         humidity: 'Luftfeuchtigkeit',
         dewPoint: 'Taupunkt',
@@ -805,7 +776,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Radar wird geladen...',
         refreshingRadar: 'Radar wird aktualisiert...',
         radarUnavailable: 'Radar nicht verfügbar',
-        pollenDataUnavailable: 'Pollendaten für diesen Ort nicht verfügbar',
 
         // Astronomy labels
         sunrise: 'Sonnenaufgang',
@@ -872,12 +842,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Sehr ungesund',
         aqiHazardous: 'Gesundheitsgefährdend',
 
-        // Pollen levels
-        pollenLow: 'Niedrig',
-        pollenLowMed: 'Niedrig-Mittel',
-        pollenMedium: 'Mittel',
-        pollenHigh: 'Hoch',
-        pollenVeryHigh: 'Sehr hoch',
 
         // Misc
         highTemp: 'Max',
@@ -901,7 +865,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Previsioni orarie',
         tenDayForecast: 'Previsioni a 10 giorni',
         radar: 'Radar',
-        pollen: 'Polline',
         sun: 'Sole',
         moon: 'Luna',
         weatherAlerts: '⚠️ Allerte meteo',
@@ -918,7 +881,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Sblocca layout',
         settings: 'Impostazioni',
         restoreDefaultLayout: 'Ripristina layout predefinito',
-        seePollenData: 'Vedi dati del polline',
         feelsLike: 'Percepita',
         humidity: 'Umidità',
         dewPoint: 'Punto di rugiada',
@@ -1025,7 +987,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Caricamento radar...',
         refreshingRadar: 'Aggiornamento radar...',
         radarUnavailable: 'Radar non disponibile',
-        pollenDataUnavailable: 'Dati polline non disponibili per questa località',
 
         // Astronomy labels
         sunrise: 'Alba',
@@ -1092,12 +1053,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Molto malsana',
         aqiHazardous: 'Pericolosa',
 
-        // Pollen levels
-        pollenLow: 'Basso',
-        pollenLowMed: 'Basso-Medio',
-        pollenMedium: 'Medio',
-        pollenHigh: 'Alto',
-        pollenVeryHigh: 'Molto alto',
 
         // Misc
         highTemp: 'Max',
@@ -1121,7 +1076,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Previsão por hora',
         tenDayForecast: 'Previsão de 10 dias',
         radar: 'Radar',
-        pollen: 'Pólen',
         sun: 'Sol',
         moon: 'Lua',
         weatherAlerts: '⚠️ Alertas meteorológicos',
@@ -1138,7 +1092,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Desbloquear layout',
         settings: 'Configurações',
         restoreDefaultLayout: 'Restaurar layout padrão',
-        seePollenData: 'Ver dados de pólen',
         feelsLike: 'Sensação',
         humidity: 'Umidade',
         dewPoint: 'Ponto de orvalho',
@@ -1245,7 +1198,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Carregando radar...',
         refreshingRadar: 'Atualizando radar...',
         radarUnavailable: 'Radar indisponível',
-        pollenDataUnavailable: 'Dados de pólen indisponíveis para esta localização',
 
         // Astronomy labels
         sunrise: 'Nascer do sol',
@@ -1312,12 +1264,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Muito insalubre',
         aqiHazardous: 'Perigoso',
 
-        // Pollen levels
-        pollenLow: 'Baixo',
-        pollenLowMed: 'Baixo-Médio',
-        pollenMedium: 'Médio',
-        pollenHigh: 'Alto',
-        pollenVeryHigh: 'Muito alto',
 
         // Misc
         highTemp: 'Máx',
@@ -1341,7 +1287,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Verwachting per uur',
         tenDayForecast: '10-daagse verwachting',
         radar: 'Radar',
-        pollen: 'Pollen',
         sun: 'Zon',
         moon: 'Maan',
         weatherAlerts: '⚠️ Weerwaarschuwingen',
@@ -1358,7 +1303,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Layout ontgrendelen',
         settings: 'Instellingen',
         restoreDefaultLayout: 'Standaardlayout herstellen',
-        seePollenData: 'Bekijk pollengegevens',
         feelsLike: 'Gevoelstemperatuur',
         humidity: 'Luchtvochtigheid',
         dewPoint: 'Dauwpunt',
@@ -1465,7 +1409,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Radar laden...',
         refreshingRadar: 'Radar verversen...',
         radarUnavailable: 'Radar niet beschikbaar',
-        pollenDataUnavailable: 'Pollengegevens niet beschikbaar voor deze locatie',
 
         // Astronomy labels
         sunrise: 'Zonsopkomst',
@@ -1532,12 +1475,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Zeer ongezond',
         aqiHazardous: 'Gevaarlijk',
 
-        // Pollen levels
-        pollenLow: 'Laag',
-        pollenLowMed: 'Laag-Middel',
-        pollenMedium: 'Middel',
-        pollenHigh: 'Hoog',
-        pollenVeryHigh: 'Zeer hoog',
 
         // Misc
         highTemp: 'Max',
@@ -1561,7 +1498,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Prognoza godzinowa',
         tenDayForecast: 'Prognoza 10-dniowa',
         radar: 'Radar',
-        pollen: 'Pyłki',
         sun: 'Słońce',
         moon: 'Księżyc',
         weatherAlerts: '⚠️ Ostrzeżenia pogodowe',
@@ -1578,7 +1514,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Odblokuj układ',
         settings: 'Ustawienia',
         restoreDefaultLayout: 'Przywróć domyślny układ',
-        seePollenData: 'Zobacz dane o pyłkach',
         feelsLike: 'Odczuwalna',
         humidity: 'Wilgotność',
         dewPoint: 'Punkt rosy',
@@ -1685,7 +1620,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Ładowanie radaru...',
         refreshingRadar: 'Odświeżanie radaru...',
         radarUnavailable: 'Radar niedostępny',
-        pollenDataUnavailable: 'Dane o pyłkach niedostępne dla tej lokalizacji',
 
         // Astronomy labels
         sunrise: 'Wschód słońca',
@@ -1752,12 +1686,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Bardzo niezdrowa',
         aqiHazardous: 'Niebezpieczna',
 
-        // Pollen levels
-        pollenLow: 'Niski',
-        pollenLowMed: 'Niski-Średni',
-        pollenMedium: 'Średni',
-        pollenHigh: 'Wysoki',
-        pollenVeryHigh: 'Bardzo wysoki',
 
         // Misc
         highTemp: 'Maks',
@@ -1781,7 +1709,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Timprognos',
         tenDayForecast: '10-dagarsprognos',
         radar: 'Radar',
-        pollen: 'Pollen',
         sun: 'Sol',
         moon: 'Måne',
         weatherAlerts: '⚠️ Vädervarningar',
@@ -1798,7 +1725,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Lås upp layout',
         settings: 'Inställningar',
         restoreDefaultLayout: 'Återställ standardlayout',
-        seePollenData: 'Se pollendata',
         feelsLike: 'Känns som',
         humidity: 'Luftfuktighet',
         dewPoint: 'Daggpunkt',
@@ -1905,7 +1831,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Laddar radar...',
         refreshingRadar: 'Uppdaterar radar...',
         radarUnavailable: 'Radar ej tillgänglig',
-        pollenDataUnavailable: 'Pollendata ej tillgänglig för denna plats',
 
         // Astronomy labels
         sunrise: 'Soluppgång',
@@ -1972,12 +1897,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Mycket ohälsosam',
         aqiHazardous: 'Farlig',
 
-        // Pollen levels
-        pollenLow: 'Låg',
-        pollenLowMed: 'Låg-Medium',
-        pollenMedium: 'Medium',
-        pollenHigh: 'Hög',
-        pollenVeryHigh: 'Mycket hög',
 
         // Misc
         highTemp: 'Max',
@@ -2001,7 +1920,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'Почасовой прогноз',
         tenDayForecast: 'Прогноз на 10 дней',
         radar: 'Радар',
-        pollen: 'Пыльца',
         sun: 'Солнце',
         moon: 'Луна',
         weatherAlerts: '⚠️ Погодные предупреждения',
@@ -2018,7 +1936,6 @@ const TRANSLATIONS = {
         unlockLayout: 'Разблокировать макет',
         settings: 'Настройки',
         restoreDefaultLayout: 'Восстановить макет по умолчанию',
-        seePollenData: 'Посмотреть данные о пыльце',
         feelsLike: 'Ощущается как',
         humidity: 'Влажность',
         dewPoint: 'Точка росы',
@@ -2125,7 +2042,6 @@ const TRANSLATIONS = {
         loadingRadar: 'Загрузка радара...',
         refreshingRadar: 'Обновление радара...',
         radarUnavailable: 'Радар недоступен',
-        pollenDataUnavailable: 'Данные о пыльце недоступны для этого места',
 
         // Astronomy labels
         sunrise: 'Восход',
@@ -2192,12 +2108,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'Очень нездоровое',
         aqiHazardous: 'Опасное',
 
-        // Pollen levels
-        pollenLow: 'Низкий',
-        pollenLowMed: 'Низкий-Средний',
-        pollenMedium: 'Средний',
-        pollenHigh: 'Высокий',
-        pollenVeryHigh: 'Очень высокий',
 
         // Misc
         highTemp: 'Макс',
@@ -2221,7 +2131,6 @@ const TRANSLATIONS = {
         hourlyForecast: '1時間ごとの予報',
         tenDayForecast: '10日間予報',
         radar: 'レーダー',
-        pollen: '花粉',
         sun: '日の出・日の入',
         moon: '月',
         weatherAlerts: '⚠️ 気象警報',
@@ -2238,7 +2147,6 @@ const TRANSLATIONS = {
         unlockLayout: 'レイアウトのロック解除',
         settings: '設定',
         restoreDefaultLayout: 'デフォルトのレイアウトに戻す',
-        seePollenData: '花粉データを見る',
         feelsLike: '体感温度',
         humidity: '湿度',
         dewPoint: '露点',
@@ -2345,7 +2253,6 @@ const TRANSLATIONS = {
         loadingRadar: 'レーダー読み込み中...',
         refreshingRadar: 'レーダー更新中...',
         radarUnavailable: 'レーダー利用不可',
-        pollenDataUnavailable: 'この地域の花粉データは利用できません',
 
         // Astronomy labels
         sunrise: '日の出',
@@ -2412,12 +2319,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: '非常に不健康',
         aqiHazardous: '危険',
 
-        // Pollen levels
-        pollenLow: '低い',
-        pollenLowMed: '低-中',
-        pollenMedium: '中程度',
-        pollenHigh: '高い',
-        pollenVeryHigh: '非常に高い',
 
         // Misc
         highTemp: '最高',
@@ -2441,7 +2342,6 @@ const TRANSLATIONS = {
         hourlyForecast: '每小时预报',
         tenDayForecast: '10天预报',
         radar: '雷达',
-        pollen: '花粉',
         sun: '日出日落',
         moon: '月相',
         weatherAlerts: '⚠️ 天气警报',
@@ -2458,7 +2358,6 @@ const TRANSLATIONS = {
         unlockLayout: '解锁布局',
         settings: '设置',
         restoreDefaultLayout: '恢复默认布局',
-        seePollenData: '查看花粉数据',
         feelsLike: '体感温度',
         humidity: '湿度',
         dewPoint: '露点',
@@ -2565,7 +2464,6 @@ const TRANSLATIONS = {
         loadingRadar: '雷达加载中...',
         refreshingRadar: '雷达刷新中...',
         radarUnavailable: '雷达不可用',
-        pollenDataUnavailable: '该位置花粉数据不可用',
 
         // Astronomy labels
         sunrise: '日出',
@@ -2632,12 +2530,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: '非常不健康',
         aqiHazardous: '危险',
 
-        // Pollen levels
-        pollenLow: '低',
-        pollenLowMed: '低-中',
-        pollenMedium: '中',
-        pollenHigh: '高',
-        pollenVeryHigh: '很高',
 
         // Misc
         highTemp: '最高',
@@ -2661,7 +2553,6 @@ const TRANSLATIONS = {
         hourlyForecast: '시간별 예보',
         tenDayForecast: '10일 예보',
         radar: '레이더',
-        pollen: '꽃가루',
         sun: '일출/일몰',
         moon: '달',
         weatherAlerts: '⚠️ 기상 경보',
@@ -2678,7 +2569,6 @@ const TRANSLATIONS = {
         unlockLayout: '레이아웃 잠금 해제',
         settings: '설정',
         restoreDefaultLayout: '기본 레이아웃 복원',
-        seePollenData: '꽃가루 데이터 보기',
         feelsLike: '체감온도',
         humidity: '습도',
         dewPoint: '이슬점',
@@ -2785,7 +2675,6 @@ const TRANSLATIONS = {
         loadingRadar: '레이더 로드 중...',
         refreshingRadar: '레이더 새로 고침 중...',
         radarUnavailable: '레이더 사용 불가',
-        pollenDataUnavailable: '이 위치에 대한 꽃가루 데이터를 사용할 수 없습니다',
 
         // Astronomy labels
         sunrise: '일출',
@@ -2852,12 +2741,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: '매우 나쁨',
         aqiHazardous: '위험',
 
-        // Pollen levels
-        pollenLow: '낮음',
-        pollenLowMed: '낮음-중간',
-        pollenMedium: '중간',
-        pollenHigh: '높음',
-        pollenVeryHigh: '매우 높음',
 
         // Misc
         highTemp: '최고',
@@ -2881,7 +2764,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'التوقعات بالساعة',
         tenDayForecast: 'توقعات 10 أيام',
         radar: 'الرادار',
-        pollen: 'حبوب اللقاح',
         sun: 'الشمس',
         moon: 'القمر',
         weatherAlerts: '⚠️ تنبيهات الطقس',
@@ -2898,7 +2780,6 @@ const TRANSLATIONS = {
         unlockLayout: 'إلغاء قفل التخطيط',
         settings: 'الإعدادات',
         restoreDefaultLayout: 'استعادة التخطيط الافتراضي',
-        seePollenData: 'عرض بيانات حبوب اللقاح',
         feelsLike: 'درجة الإحساس',
         humidity: 'الرطوبة',
         dewPoint: 'نقطة الندى',
@@ -3005,7 +2886,6 @@ const TRANSLATIONS = {
         loadingRadar: 'جاري تحميل الرادار...',
         refreshingRadar: 'جاري تحديث الرادار...',
         radarUnavailable: 'الرادار غير متاح',
-        pollenDataUnavailable: 'بيانات حبوب اللقاح غير متاحة لهذا الموقع',
 
         // Astronomy labels
         sunrise: 'شروق الشمس',
@@ -3072,12 +2952,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'غير صحي جدًا',
         aqiHazardous: 'خطير',
 
-        // Pollen levels
-        pollenLow: 'منخفض',
-        pollenLowMed: 'منخفض-متوسط',
-        pollenMedium: 'متوسط',
-        pollenHigh: 'مرتفع',
-        pollenVeryHigh: 'مرتفع جدًا',
 
         // Misc
         highTemp: 'العظمى',
@@ -3101,7 +2975,6 @@ const TRANSLATIONS = {
         hourlyForecast: 'प्रति घंटा पूर्वानुमान',
         tenDayForecast: '10-दिवसीय पूर्वानुमान',
         radar: 'रडार',
-        pollen: 'पराग',
         sun: 'सूर्य',
         moon: 'चंद्रमा',
         weatherAlerts: '⚠️ मौसम चेतावनी',
@@ -3118,7 +2991,6 @@ const TRANSLATIONS = {
         unlockLayout: 'लेआउट अनलॉक करें',
         settings: 'सेटिंग्स',
         restoreDefaultLayout: 'डिफ़ॉल्ट लेआउट पुनर्स्थापित करें',
-        seePollenData: 'पराग डेटा देखें',
         feelsLike: 'महसूस होता है',
         humidity: 'आर्द्रता',
         dewPoint: 'ओस बिंदु',
@@ -3225,7 +3097,6 @@ const TRANSLATIONS = {
         loadingRadar: 'रडार लोड हो रहा है...',
         refreshingRadar: 'रडार ताज़ा हो रहा है...',
         radarUnavailable: 'रडार उपलब्ध नहीं',
-        pollenDataUnavailable: 'इस स्थान के लिए पराग डेटा उपलब्ध नहीं',
 
         // Astronomy labels
         sunrise: 'सूर्योदय',
@@ -3292,12 +3163,6 @@ const TRANSLATIONS = {
         aqiVeryUnhealthy: 'बहुत अस्वस्थ',
         aqiHazardous: 'खतरनाक',
 
-        // Pollen levels
-        pollenLow: 'कम',
-        pollenLowMed: 'कम-मध्यम',
-        pollenMedium: 'मध्यम',
-        pollenHigh: 'उच्च',
-        pollenVeryHigh: 'बहुत उच्च',
 
         // Misc
         highTemp: 'अधिकतम',

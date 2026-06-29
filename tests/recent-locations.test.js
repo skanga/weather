@@ -72,4 +72,4 @@ assert.strictEqual(helpers.recentLocationLabel({
 }), 'Tokyo, Japan');
 
 assert.match(htmlSrc, /id="recent-locations"/);
-assert.match(appSrc, /'details-section', col: 'wide'[\s\S]*\];/);
+assert.doesNotMatch(appSrc, /details-section/);

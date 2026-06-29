@@ -19,20 +19,16 @@ function loadProxy(relPath) {
 }
 
 const alerts = loadProxy('alerts-proxy/index.js');
-const pollen = loadProxy('pollen-proxy/index.js');
 
 {
     const req = { headers: { origin: 'https://www.noadsweather.com' } };
     assert.strictEqual(alerts.getCorsOrigin(req), 'https://www.noadsweather.com');
-    assert.strictEqual(pollen.getCorsOrigin(req), 'https://www.noadsweather.com');
 }
 
 {
     const req = { headers: { origin: 'https://skanga.github.io' } };
     assert.strictEqual(alerts.getCorsOrigin(req), 'https://skanga.github.io');
-    assert.strictEqual(pollen.getCorsOrigin(req), 'https://skanga.github.io');
     assert.strictEqual(alerts.isAllowedRequest(req), true);
-    assert.strictEqual(pollen.isAllowedRequest(req), true);
 }
 
 {
@@ -61,10 +57,4 @@ const pollen = loadProxy('pollen-proxy/index.js');
         a => a.description
     );
     assert.deepStrictEqual(deduped.map(a => a.description), ['A', 'B']);
-}
-
-{
-    const appSrc = fs.readFileSync(path.resolve(__dirname, '..', 'js/app.js'), 'utf8');
-    const body = appSrc.match(/async function loadPollenData[\s\S]*?^}/m)[0];
-    assert.match(body, /if \(!res\.ok\) throw new Error\('Pollen request failed'\);[\s\S]*const data = await res\.json\(\);/);
 }

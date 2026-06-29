@@ -388,7 +388,6 @@
 }
 [data-style="editorial"] section,
 [data-style="editorial"] #current-section,
-[data-style="editorial"] #details-section,
 [data-style="editorial"] #hourly-section,
 [data-style="editorial"] #daily-section,
 [data-style="editorial"] #radar-section,
@@ -573,8 +572,6 @@
 [data-style="bulletin"] .forecast-temps,
 [data-style="bulletin"] .forecast-condition,
 [data-style="bulletin"] .forecast-precip,
-[data-style="bulletin"] .pollen-item,
-[data-style="bulletin"] .pollen-item > div,
 [data-style="bulletin"] .detail-label,
 [data-style="bulletin"] .detail-value,
 [data-style="bulletin"] .astro-item,
@@ -603,7 +600,6 @@
 }
 [data-style="bulletin"] section,
 [data-style="bulletin"] #current-section,
-[data-style="bulletin"] #details-section,
 [data-style="bulletin"] #hourly-section,
 [data-style="bulletin"] #daily-section,
 [data-style="bulletin"] #radar-section,
@@ -1238,7 +1234,6 @@ section {
 /* Only apply overflow hidden where needed for scrollable content */
 #hourly-section,
 #daily-section,
-#details-section,
 #radar-section {
     overflow: hidden;
 }
@@ -1332,11 +1327,6 @@ body.is-dragging .weather-col:empty {
     opacity: 0.5;
 }
 
-#details-section {
-    min-width: 0;
-    overflow: hidden;
-}
-
 @media (max-width: 600px) {
     .columns-row {
         flex-direction: column;
@@ -1406,65 +1396,6 @@ body.is-dragging .weather-col:empty {
     gap: 0.4rem 1.5rem;
     margin-top: 0.75rem;
     font-size: 0.85rem;
-}
-
-/* Pollen button */
-.pollen-btn {
-    text-transform: none;
-    font-weight: 400;
-    font-size: 0.75rem;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.2rem 0.5rem;
-    cursor: pointer;
-    margin-left: 0.5rem;
-    vertical-align: middle;
-    transition: background 0.2s;
-}
-
-.pollen-btn:hover {
-    background: var(--accent-hover);
-}
-
-.pollen-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
-/* Pollen scroll */
-.pollen-scroll {
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-rows: 1fr 1fr;
-    gap: 0.5rem 1rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-    cursor: grab;
-}
-
-.pollen-item {
-    text-align: center;
-    min-width: 70px;
-}
-
-/* Fewer pollen items — single row, bigger text */
-.pollen-few {
-    grid-template-rows: 1fr;
-    justify-content: center;
-}
-
-.pollen-few .pollen-item {
-    min-width: 90px;
-}
-
-.pollen-few .detail-label {
-    font-size: 1.05rem;
-}
-
-.pollen-few .detail-value {
-    font-size: 1.3rem;
 }
 
 .current-detail-col {

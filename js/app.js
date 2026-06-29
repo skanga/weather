@@ -108,7 +108,7 @@ function fmtPrecip(val) {
 
 const DEFAULT_SECTION_ORDER = [
     'current-section', 'hourly-section', 'daily-section',
-    'radar-section', 'sun-section', 'moon-section', 'details-section'
+    'radar-section', 'sun-section', 'moon-section'
 ];
 
 // Default layout: ordered list with column assignments
@@ -120,7 +120,6 @@ const DEFAULT_LAYOUT_LIST = [
     { id: 'radar-section', col: 'left' },
     { id: 'sun-section', col: 'right' },
     { id: 'moon-section', col: 'right' },
-    { id: 'details-section', col: 'wide' },
 ];
 
 const DEFAULT_CHART_ORDER = ['chart-temp', 'chart-atmos', 'chart-precip', 'chart-wind'];
@@ -129,7 +128,6 @@ const DEFAULT_WIDE_SECTIONS = ['daily-section', 'hourly-section'];
 function sectionName(id) {
     const keyMap = {
         'current-section': 'currentConditions',
-        'details-section': 'pollen',
         'hourly-section': 'hourlyForecast',
         'daily-section': 'tenDayForecast',
         'radar-section': 'radar',
@@ -1233,7 +1231,7 @@ async function fetchAirQuality(lat, lon) {
         const params = new URLSearchParams({
             latitude: lat,
             longitude: lon,
-            current: 'us_aqi,grass_pollen,birch_pollen,ragweed_pollen,alder_pollen,olive_pollen,mugwort_pollen',
+            current: 'us_aqi',
         });
         const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
         if (!res.ok) return null;
@@ -1250,39 +1248,6 @@ function aqiLabel(aqi) {
     if (aqi <= 200) return { text: t('aqiUnhealthy'), color: '#dc2626' };
     if (aqi <= 300) return { text: t('aqiVeryUnhealthy'), color: '#7c3aed' };
     return { text: t('aqiHazardous'), color: '#7f1d1d' };
-}
-
-function pollenSummary(aq) {
-    if (!aq) return null;
-    const types = [
-        { name: 'Grass', val: aq.grass_pollen },
-        { name: 'Birch', val: aq.birch_pollen },
-        { name: 'Ragweed', val: aq.ragweed_pollen },
-        { name: 'Alder', val: aq.alder_pollen },
-        { name: 'Olive', val: aq.olive_pollen },
-        { name: 'Mugwort', val: aq.mugwort_pollen },
-    ].filter(t => t.val !== null && t.val !== undefined);
-    if (types.length === 0) return null;
-
-    function level(v) {
-        if (v <= 10) return t('pollenLow');
-        if (v <= 50) return t('pollenMedium');
-        if (v <= 100) return t('pollenHigh');
-        return t('pollenVeryHigh');
-    }
-    function levelColor(v) {
-        if (v <= 10) return '#16a34a';
-        if (v <= 50) return '#ca8a04';
-        if (v <= 100) return '#ea580c';
-        return '#dc2626';
-    }
-
-    return types.map(t => ({
-        name: t.name,
-        level: level(t.val),
-        color: levelColor(t.val),
-        value: Math.round(t.val),
-    }));
 }
 
 async function fetchNWSAlerts(lat, lon) {
@@ -1482,139 +1447,6 @@ function renderCurrent(current, airQuality) {
             </div>
         </div>
     `;
-}
-
-const POLLEN_PROXY_URL = window.POLLEN_PROXY_URL || 'https://pollen-proxy-15838356607.us-central1.run.app';
-
-function renderPollen(airQuality, lat, lon) {
-    const section = document.getElementById('details-section');
-    const openMeteoPollen = pollenSummary(airQuality);
-    const hasFreePollen = openMeteoPollen && openMeteoPollen.length > 0;
-
-    if (hasFreePollen) {
-        // European locations — show Open-Meteo pollen directly
-        section.innerHTML = `
-            <h2>${t('pollen')}</h2>
-            <div class="pollen-scroll">
-                ${openMeteoPollen.map(p => `
-                    <div class="pollen-item">
-                        <div class="detail-label">${p.name}</div>
-                        <div class="detail-value" style="color:${p.color};">${p.level}</div>
-                    </div>`).join('')}
-            </div>
-        `;
-        initDragScroll(section.querySelector('.pollen-scroll'));
-    } else {
-        // Non-European — check cache first, auto-show if available
-        const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
-        const cached = localStorage.getItem(cacheKey);
-
-        let cachedData = null;
-        if (cached) {
-            try {
-                cachedData = JSON.parse(cached);
-            } catch {
-                // Corrupted cache entry — drop it
-                localStorage.removeItem(cacheKey);
-            }
-        }
-        if (cachedData) {
-            // Auto-show cached data
-            section.innerHTML = `
-                <h2>${t('pollen')} <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString(getLocaleForDate(), { month: 'long', day: 'numeric' })})</span></h2>
-                <div id="pollen-content"></div>
-            `;
-            displayPollenData(cachedData);
-        } else {
-            section.innerHTML = `
-                <h2>${t('pollen')}</h2>
-                <div id="pollen-content">
-                    <button id="pollen-btn" class="pollen-btn">${t('seePollenData')}</button>
-                </div>
-            `;
-            document.getElementById('pollen-btn').addEventListener('click', () => {
-                loadPollenData(lat, lon);
-            });
-        }
-    }
-}
-
-function displayPollenData(data) {
-    const content = document.getElementById('pollen-content');
-    const section = document.getElementById('details-section');
-
-    if (!data || data.error || !data.dailyInfo || data.dailyInfo.length === 0) {
-        content.innerHTML = `<span style="color:var(--text-muted);font-size:0.85rem;">${t('pollenDataUnavailable')}</span>`;
-        return;
-    }
-
-    const day = data.dailyInfo[0];
-    const types = day.pollenTypeInfo || [];
-    const plants = day.plantInfo || [];
-
-    let items = [];
-    for (const t of types) {
-        const idx = t.indexInfo;
-        if (!idx) continue;
-        items.push({ name: t.displayName, category: idx.category || 'None', value: idx.value });
-    }
-    for (const p of plants) {
-        const idx = p.indexInfo;
-        if (!idx || idx.value === 0) continue;
-        items.push({ name: p.displayName, category: idx.category, value: idx.value });
-    }
-
-    if (items.length === 0) {
-        content.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;">No significant pollen detected</span>';
-        return;
-    }
-
-    // Update header with date
-    const h2 = section.querySelector('h2');
-    if (h2) {
-        h2.innerHTML = `${t('pollen')} <span style="text-transform:none;font-weight:400;font-size:0.85rem;color:var(--text-muted);">(${new Date().toLocaleDateString(getLocaleForDate(), { month: 'long', day: 'numeric' })})</span>`;
-    }
-
-    const fewClass = items.length <= 3 ? ' pollen-few' : '';
-    content.innerHTML = `
-        <div class="pollen-scroll${fewClass}">
-            ${items.map(p => `
-                <div class="pollen-item">
-                    <div class="detail-label">${escapeHtml(p.name)}</div>
-                    <div class="detail-value" style="color:${pollenIndexColor(p.value)};">${escapeHtml(p.category)}</div>
-                    <div style="font-size:0.7rem;color:var(--text-muted);">${Number(p.value) || 0}/5</div>
-                </div>`).join('')}
-        </div>
-    `;
-    initDragScroll(content.querySelector('.pollen-scroll'));
-}
-
-async function loadPollenData(lat, lon) {
-    const btn = document.getElementById('pollen-btn');
-    btn.textContent = t('loading');
-    btn.disabled = true;
-
-    const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 10)}`;
-
-    try {
-        const res = await fetch(`${POLLEN_PROXY_URL}?lat=${lat}&lon=${lon}`);
-        if (!res.ok) throw new Error('Pollen request failed');
-        const data = await res.json();
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-        displayPollenData(data);
-    } catch (e) {
-        const content = document.getElementById('pollen-content');
-        content.innerHTML = `<button id="pollen-btn" class="pollen-btn">${t('retry')}</button>`;
-        document.getElementById('pollen-btn').addEventListener('click', () => loadPollenData(lat, lon));
-    }
-}
-
-function pollenIndexColor(value) {
-    if (value <= 1) return '#16a34a';  // Low - green
-    if (value <= 2) return '#84cc16';  // Low-Medium - lime
-    if (value <= 3) return '#ca8a04';  // Medium - yellow
-    if (value <= 4) return '#ea580c';  // High - orange
-    return '#dc2626';                   // Very High - red
 }
 
 function renderHourly(hourly) {
@@ -2793,7 +2625,6 @@ async function fetchAllWeatherData(lat, lon, country, region) {
     document.getElementById('alerts-section').hidden = true;
     document.getElementById('weather-summary').textContent = '';
     document.getElementById('current-section').innerHTML = `<div class="loading">${t('loading')}</div>`;
-    document.getElementById('details-section').innerHTML = '';
     document.getElementById('hourly-section').innerHTML = '';
     document.getElementById('daily-section').innerHTML = '';
     document.getElementById('radar-section').innerHTML = `<h2>${t('radar')}</h2><div class="loading">${t('loading')}</div>`;
@@ -2824,7 +2655,7 @@ async function fetchAllWeatherData(lat, lon, country, region) {
         return null;
     });
 
-    // AQI + Pollen — update current conditions and pollen when ready
+    // AQI — update current conditions when ready
     fetchAirQuality(lat, lon).then(airQuality => {
         if (myToken !== weatherLoadToken) return;
         _lastAirQuality = airQuality;
@@ -2834,7 +2665,6 @@ async function fetchAllWeatherData(lat, lon, country, region) {
                 renderCurrent(meteo.current, airQuality);
                 applySectionPreferences();
             }
-            renderPollen(airQuality, lat, lon);
             applySectionPreferences();
         });
     }).catch(() => {});
@@ -2872,9 +2702,6 @@ function rerenderWeatherFromCache() {
     renderHourly(meteo.hourly);
     renderDaily(meteo.daily, meteo.hourly);
     renderSunMoon(meteo.daily, lat, lon, meteo.utc_offset_seconds);
-    if (airQuality) {
-        renderPollen(airQuality, lat, lon);
-    }
     if (alerts !== null && alerts !== undefined) {
         renderAlerts(alerts);
     }

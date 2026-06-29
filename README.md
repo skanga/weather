@@ -11,7 +11,6 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 ## Features
 
 - Current conditions with feels-like, humidity, dew point, wind, gusts, UV index, and air quality
-- Pollen data (Google Pollen API for non-European locations, Open-Meteo for Europe)
 - 24-hour hourly forecast
 - 10-day forecast with interactive charts (temperature, humidity/cloud/pressure, precipitation, wind)
 - Animated weather radar with play/pause and speed controls
@@ -34,7 +33,6 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 - **Radar:** [RainViewer API](https://www.rainviewer.com/api.html) (free) + [CartoDB](https://carto.com/basemaps/) map tiles
 - **Alerts:** [NWS API](https://www.weather.gov/documentation/services-web-api) (free, US only)
 - **Air quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (free)
-- **Pollen:** [Google Pollen API](https://developers.google.com/maps/documentation/pollen) via Cloud Run proxy
 - **Postal codes:** [Zippopotam](https://api.zippopotam.us/) (free, 60+ countries)
 
 ## Running Locally
@@ -73,9 +71,7 @@ fonts/, img/        — Static assets
 scripts/            — build-cities.js + cities.json (generates city pages + sitemap.xml)
 cities/             — 77 generated city pages (committed)
 alerts-proxy/       — Cloud Run proxy for NWS alerts
-pollen-proxy/       — Cloud Run proxy for Google Pollen API
 robots.txt, sitemap.xml
-CNAME               — Custom domain config for GitHub Pages
 LICENSE             — MIT License
 ```
 
@@ -86,14 +82,12 @@ LICENSE             — MIT License
 3. All weather APIs are called in parallel from the browser — no backend needed
 4. Sections render progressively as each API responds
 5. User preferences (layout, units, theme) are saved in localStorage
-6. Pollen data is fetched on-demand through a Cloud Run proxy to keep the API key private
 
 ## Cost
 
 - **Domain:** ~$10/year
 - **Hosting:** Free (GitHub Pages)
 - **APIs:** Free (Open-Meteo, RainViewer, NWS, Zippopotam)
-- **Pollen proxy:** Free tier (Google Cloud Run)
 - **Total:** ~$10/year
 
 ## License
