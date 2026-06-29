@@ -551,15 +551,6 @@
     font-weight: 300;
     letter-spacing: -0.025em;
 }
-/* Buttons — pill radius for soft modernity */
-[data-style="quiet"] #donate-btn {
-    background: var(--accent);
-    color: var(--bg);
-}
-[data-style="quiet"] #donate-btn:hover {
-    background: var(--accent-hover);
-}
-
 /* Bulletin-specific component tweaks (still don't change layout) */
 [data-style="bulletin"] body {
     font-feature-settings: 'tnum' 1, 'kern' 1;
@@ -826,28 +817,6 @@ html[data-blurb-dismissed] #seo-blurb { display: none !important; }
 
 #theme-toggle:hover {
     background: var(--btn-hover-bg);
-}
-
-/* Floating donate button */
-#donate-btn {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    background: #ff5e5b;
-    color: white;
-    text-decoration: none;
-    padding: 0.6rem 1rem;
-    border-radius: var(--radius-pill);
-    font-size: 0.85rem;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transition: background 0.2s, transform 0.2s;
-    z-index: 1000;
-}
-
-#donate-btn:hover {
-    background: #e04e4b;
-    transform: translateY(-1px);
 }
 
 /* Privacy link (shared style) */
@@ -1268,6 +1237,12 @@ section h2 {
 .alert-item:last-child {
     margin-bottom: 0;
 }
+.alert-meta {
+    font-size: 0.75rem;
+    color: var(--alert-text);
+    opacity: 0.85;
+    margin-top: 0.2rem;
+}
 
 /* Weather summary */
 #weather-summary {
@@ -1280,6 +1255,12 @@ section h2 {
 
 #weather-summary:empty {
     display: none;
+}
+.updated-at {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }
 
 /* Weather content layout */

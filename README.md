@@ -1,12 +1,12 @@
-# NoAdsWeather
+# Weather
 
-**Weather without the clutter.** [noadsweather.com](https://noadsweather.com)
+**Weather without the clutter.** [skanga.github.io/noadsweather](https://skanga.github.io/noadsweather/)
 
 A fast, ad-free, privacy-respecting weather website. No tracking, no cookies, no bloat. Just weather.
 
 ## Why?
 
-Weather websites are some of the most bloated pages on the internet. A typical weather page loads 6-12MB of JavaScript, tracking scripts, and ads just to show you the temperature. NoAdsWeather loads in under 530KB total — that's 10-20x lighter.
+Weather websites are some of the most bloated pages on the internet. A typical weather page loads 6-12MB of JavaScript, tracking scripts, and ads just to show you the temperature. This app loads in under 530KB total — that's 10-20x lighter.
 
 ## Features
 
@@ -19,7 +19,7 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 - Weather summary sentence generated from forecast data
 - Dark mode (auto-detects OS preference, manual toggle)
 - Fahrenheit/Celsius and 12H/24H toggles (auto-detects from country)
-- Customizable layout — drag to reorder sections, resize, minimize, or hide any section
+- Optional layout customization — reorder, resize, minimize, or hide sections
 - Bookmarkable URLs with direct lat/lon for instant loading
 - Installable as a PWA (Progressive Web App)
 - International postal code support (60+ countries)
@@ -85,15 +85,10 @@ LICENSE             — MIT License
 
 ## Cost
 
-- **Domain:** ~$10/year
 - **Hosting:** Free (GitHub Pages)
 - **APIs:** Free (Open-Meteo, RainViewer, NWS, Zippopotam)
-- **Total:** ~$10/year
+- **Total:** $0/year
 
 ## License
 
 MIT — see [LICENSE](LICENSE)
-
-## Support
-
-If you find this useful, consider [supporting us on Ko-fi](https://ko-fi.com/noadsdude).

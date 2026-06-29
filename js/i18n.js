@@ -10,7 +10,7 @@
 // getCurrentLang) is fine — those functions just aren't called by the build.
 
 // =============================================================================
-// NoAdsWeather - i18n.js
+// Weather - i18n.js
 // Internationalization — all translations for all 15 languages in one file.
 // =============================================================================
 
@@ -28,13 +28,13 @@ const TRANSLATIONS = {
         searchPlaceholder: 'Enter city or zip code',
         searchButton: 'Search',
         back: '← Back',
+        searchAnotherCity: '← Search',
         privacyCookies: 'Privacy',
         about: 'About',
-        supportThisSite: 'Support this site',
         showMore: 'Show more',
         showLess: 'Show less',
-        lockLayout: 'Lock layout',
-        unlockLayout: 'Unlock layout',
+        lockLayout: 'Customize layout',
+        unlockLayout: 'Done customizing',
         settings: 'Settings',
         restoreDefaultLayout: 'Restore Default Layout',
         feelsLike: 'Feels like',
@@ -58,19 +58,18 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Show color backgrounds on 10-day forecast',
-        settingSupportBtn: 'Show Annoying Support Button',
         settingWeatherSummary: 'Show weather summary',
         settingThemeToggle: 'Show Light Mode / Dark Mode button',
         settingUnitsBtn: 'Show °C / °F button',
         settingTimeBtn: 'Show 12H / 24H button',
-        settingLockBtn: 'Show Lock / Unlock button',
+        settingLockBtn: 'Show Customize Layout button',
         settingNwsLink: 'Show NWS Radar link',
         settingShowSectionButtons: 'Show "Show section" buttons when sections are hidden',
         settingTranslateLink: 'Show alert translation link',
         settingAutoPlayRadar: 'Always auto-play radar',
         settingRememberCity: 'Remember last city',
-        cityPageTitle: '{city} Weather with No Ads',
-        cityPageSeoBlurb: 'Get the {city} weather forecast without ads, cookies, or tracking. Open-Meteo data, 10-day forecast, hourly conditions, and radar — all free.',
+        cityPageTitle: '{city} Weather',
+        cityPageSeoBlurb: 'Get the {city} weather forecast with Open-Meteo data, a 10-day forecast, hourly conditions, and radar.',
         cityPageHideBlurb: 'click here to hide this',
 
         // Weather codes (WMO)
@@ -130,6 +129,8 @@ const TRANSLATIONS = {
         sumTomorrowRainNoAmount: 'Rain expected tomorrow',
         sumTomorrowWarming: 'warming up to {high}{unit} tomorrow',
         sumTomorrowCooling: 'cooling to {high}{unit} tomorrow',
+        sumWindy: 'Gusts up to {gust}{unit}',
+        sumUvHigh: 'UV is high today',
 
         // UV Index levels
         uvLow: '(Low)',
@@ -213,6 +214,7 @@ const TRANSLATIONS = {
         // Misc short labels
         highTemp: 'High',
         lowTemp: 'Low',
+        updatedAt: 'Updated {time}',
 
         // Search / errors / aria-labels
         searching: 'Searching...',
@@ -241,7 +243,6 @@ const TRANSLATIONS = {
         back: '← Volver',
         privacyCookies: 'Privacidad',
         about: 'Acerca de',
-        supportThisSite: 'Apoya este sitio',
         showMore: 'Mostrar más',
         showLess: 'Mostrar menos',
         lockLayout: 'Bloquear diseño',
@@ -269,7 +270,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Mostrar fondos de color en el pronóstico de 10 días',
-        settingSupportBtn: 'Mostrar botón de apoyo molesto',
         settingWeatherSummary: 'Mostrar resumen del clima',
         settingThemeToggle: 'Mostrar botón Modo claro / Modo oscuro',
         settingUnitsBtn: 'Mostrar botón °C / °F',
@@ -452,7 +452,6 @@ const TRANSLATIONS = {
         back: '← Retour',
         privacyCookies: 'Confidentialité',
         about: 'À propos',
-        supportThisSite: 'Soutenir ce site',
         showMore: 'Afficher plus',
         showLess: 'Afficher moins',
         lockLayout: 'Verrouiller la mise en page',
@@ -480,7 +479,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Afficher les fonds colorés sur les prévisions à 10 jours',
-        settingSupportBtn: 'Afficher le bouton de soutien gênant',
         settingWeatherSummary: 'Afficher le résumé météo',
         settingThemeToggle: 'Afficher le bouton Mode clair / Mode sombre',
         settingUnitsBtn: 'Afficher le bouton °C / °F',
@@ -663,7 +661,6 @@ const TRANSLATIONS = {
         back: '← Zurück',
         privacyCookies: 'Datenschutz',
         about: 'Über uns',
-        supportThisSite: 'Diese Seite unterstützen',
         showMore: 'Mehr anzeigen',
         showLess: 'Weniger anzeigen',
         lockLayout: 'Layout sperren',
@@ -691,7 +688,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Farbige Hintergründe in der 10-Tage-Vorhersage anzeigen',
-        settingSupportBtn: 'Nervigen Unterstützungsbutton anzeigen',
         settingWeatherSummary: 'Wetterzusammenfassung anzeigen',
         settingThemeToggle: 'Hell-/Dunkelmodus-Schaltfläche anzeigen',
         settingUnitsBtn: '°C / °F-Schaltfläche anzeigen',
@@ -874,7 +870,6 @@ const TRANSLATIONS = {
         back: '← Indietro',
         privacyCookies: 'Privacy',
         about: 'Informazioni',
-        supportThisSite: 'Sostieni questo sito',
         showMore: 'Mostra di più',
         showLess: 'Mostra meno',
         lockLayout: 'Blocca layout',
@@ -902,7 +897,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Mostra sfondi colorati nelle previsioni a 10 giorni',
-        settingSupportBtn: 'Mostra fastidioso pulsante di supporto',
         settingWeatherSummary: 'Mostra riepilogo meteo',
         settingThemeToggle: 'Mostra pulsante Modalità chiara / Modalità scura',
         settingUnitsBtn: 'Mostra pulsante °C / °F',
@@ -1085,7 +1079,6 @@ const TRANSLATIONS = {
         back: '← Voltar',
         privacyCookies: 'Privacidade',
         about: 'Sobre',
-        supportThisSite: 'Apoie este site',
         showMore: 'Mostrar mais',
         showLess: 'Mostrar menos',
         lockLayout: 'Bloquear layout',
@@ -1113,7 +1106,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Mostrar fundos coloridos na previsão de 10 dias',
-        settingSupportBtn: 'Mostrar botão chato de apoio',
         settingWeatherSummary: 'Mostrar resumo do clima',
         settingThemeToggle: 'Mostrar botão Modo claro / Modo escuro',
         settingUnitsBtn: 'Mostrar botão °C / °F',
@@ -1296,7 +1288,6 @@ const TRANSLATIONS = {
         back: '← Terug',
         privacyCookies: 'Privacy',
         about: 'Over ons',
-        supportThisSite: 'Steun deze site',
         showMore: 'Meer tonen',
         showLess: 'Minder tonen',
         lockLayout: 'Layout vergrendelen',
@@ -1324,7 +1315,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Gekleurde achtergronden tonen in 10-daagse verwachting',
-        settingSupportBtn: 'Irritante ondersteuningsknop tonen',
         settingWeatherSummary: 'Weeroverzicht tonen',
         settingThemeToggle: 'Lichte / Donkere modus-knop tonen',
         settingUnitsBtn: '°C / °F-knop tonen',
@@ -1507,7 +1497,6 @@ const TRANSLATIONS = {
         back: '← Wstecz',
         privacyCookies: 'Prywatność',
         about: 'O nas',
-        supportThisSite: 'Wesprzyj tę stronę',
         showMore: 'Pokaż więcej',
         showLess: 'Pokaż mniej',
         lockLayout: 'Zablokuj układ',
@@ -1535,7 +1524,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Pokaż kolorowe tła w prognozie 10-dniowej',
-        settingSupportBtn: 'Pokaż irytujący przycisk wsparcia',
         settingWeatherSummary: 'Pokaż podsumowanie pogody',
         settingThemeToggle: 'Pokaż przycisk Tryb jasny / Tryb ciemny',
         settingUnitsBtn: 'Pokaż przycisk °C / °F',
@@ -1718,7 +1706,6 @@ const TRANSLATIONS = {
         back: '← Tillbaka',
         privacyCookies: 'Integritet',
         about: 'Om',
-        supportThisSite: 'Stöd denna sida',
         showMore: 'Visa mer',
         showLess: 'Visa mindre',
         lockLayout: 'Lås layout',
@@ -1746,7 +1733,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Visa färgbakgrunder i 10-dagarsprognosen',
-        settingSupportBtn: 'Visa irriterande stödknapp',
         settingWeatherSummary: 'Visa vädersammanfattning',
         settingThemeToggle: 'Visa knappen Ljust läge / Mörkt läge',
         settingUnitsBtn: 'Visa knappen °C / °F',
@@ -1929,7 +1915,6 @@ const TRANSLATIONS = {
         back: '← Назад',
         privacyCookies: 'Конфиденциальность',
         about: 'О сайте',
-        supportThisSite: 'Поддержать сайт',
         showMore: 'Показать больше',
         showLess: 'Показать меньше',
         lockLayout: 'Заблокировать макет',
@@ -1957,7 +1942,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'Показывать цветной фон в 10-дневном прогнозе',
-        settingSupportBtn: 'Показывать назойливую кнопку поддержки',
         settingWeatherSummary: 'Показывать сводку погоды',
         settingThemeToggle: 'Показывать кнопку Светлый / Тёмный режим',
         settingUnitsBtn: 'Показывать кнопку °C / °F',
@@ -2140,7 +2124,6 @@ const TRANSLATIONS = {
         back: '← 戻る',
         privacyCookies: 'プライバシー',
         about: '概要',
-        supportThisSite: 'このサイトを応援する',
         showMore: 'もっと見る',
         showLess: '折りたたむ',
         lockLayout: 'レイアウトをロック',
@@ -2168,7 +2151,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: '10日間予報に色付き背景を表示',
-        settingSupportBtn: '目立つ応援ボタンを表示',
         settingWeatherSummary: '天気の概要を表示',
         settingThemeToggle: 'ライトモード / ダークモードのボタンを表示',
         settingUnitsBtn: '°C / °F ボタンを表示',
@@ -2351,7 +2333,6 @@ const TRANSLATIONS = {
         back: '← 返回',
         privacyCookies: '隐私',
         about: '关于',
-        supportThisSite: '支持本站',
         showMore: '显示更多',
         showLess: '收起',
         lockLayout: '锁定布局',
@@ -2379,7 +2360,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: '在10天预报上显示彩色背景',
-        settingSupportBtn: '显示烦人的支持按钮',
         settingWeatherSummary: '显示天气摘要',
         settingThemeToggle: '显示浅色 / 深色模式按钮',
         settingUnitsBtn: '显示 °C / °F 按钮',
@@ -2562,7 +2542,6 @@ const TRANSLATIONS = {
         back: '← 뒤로',
         privacyCookies: '개인정보',
         about: '소개',
-        supportThisSite: '이 사이트 지원하기',
         showMore: '더 보기',
         showLess: '간략히 보기',
         lockLayout: '레이아웃 잠금',
@@ -2590,7 +2569,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: '10일 예보에 색상 배경 표시',
-        settingSupportBtn: '귀찮은 후원 버튼 표시',
         settingWeatherSummary: '날씨 요약 표시',
         settingThemeToggle: '라이트 모드 / 다크 모드 버튼 표시',
         settingUnitsBtn: '°C / °F 버튼 표시',
@@ -2773,7 +2751,6 @@ const TRANSLATIONS = {
         back: '← رجوع',
         privacyCookies: 'الخصوصية',
         about: 'حول',
-        supportThisSite: 'ادعم هذا الموقع',
         showMore: 'عرض المزيد',
         showLess: 'عرض أقل',
         lockLayout: 'قفل التخطيط',
@@ -2801,7 +2778,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: 'عرض خلفيات ملونة في توقعات 10 أيام',
-        settingSupportBtn: 'عرض زر الدعم المزعج',
         settingWeatherSummary: 'عرض ملخص الطقس',
         settingThemeToggle: 'عرض زر الوضع الفاتح / الوضع الداكن',
         settingUnitsBtn: 'عرض زر °C / °F',
@@ -2984,7 +2960,6 @@ const TRANSLATIONS = {
         back: '← वापस',
         privacyCookies: 'गोपनीयता',
         about: 'परिचय',
-        supportThisSite: 'इस साइट का समर्थन करें',
         showMore: 'और देखें',
         showLess: 'कम दिखाएं',
         lockLayout: 'लेआउट लॉक करें',
@@ -3012,7 +2987,6 @@ const TRANSLATIONS = {
 
         // Settings labels
         settingForecastColors: '10-दिवसीय पूर्वानुमान पर रंगीन पृष्ठभूमि दिखाएं',
-        settingSupportBtn: 'परेशान करने वाला सहायता बटन दिखाएं',
         settingWeatherSummary: 'मौसम सारांश दिखाएं',
         settingThemeToggle: 'लाइट मोड / डार्क मोड बटन दिखाएं',
         settingUnitsBtn: '°C / °F बटन दिखाएं',

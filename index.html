@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tilecache.rainviewer.com https://a.basemaps.cartocdn.com https://b.basemaps.cartocdn.com https://c.basemaps.cartocdn.com https://d.basemaps.cartocdn.com https://noadsradar-tilesvc-15838356607.us-central1.run.app; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://air-quality-api.open-meteo.com https://api.weather.gov https://api.rainviewer.com https://api.zippopotam.us https://alerts-proxy-ssdjubgioq-uc.a.run.app https://noadsradar-tilesvc-15838356607.us-central1.run.app; font-src 'self'; manifest-src 'self' blob:; base-uri 'self'; form-action 'self'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>NoAdsWeather — Weather without the clutter</title>
+    <title>Weather</title>
     <meta name="description" content="Fast, ad-free weather forecasts. No tracking, no cookies, no bloat.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,7 +47,7 @@
     <!-- Home View -->
     <div id="home-view" class="view">
         <header class="home-header">
-            <h1>NoAdsWeather</h1>
+            <h1>Weather</h1>
             <p class="tagline" data-i18n="tagline">Weather without the clutter.</p>
         </header>
         <main class="search-container">
@@ -76,7 +76,7 @@
     <div id="weather-view" class="view" hidden>
         <header class="weather-header">
             <div class="weather-toolbar">
-                <button id="back-btn" data-i18n="back" data-i18n-aria-label="backToSearch" aria-label="Back to search">&larr; Back</button>
+                <button id="back-btn" data-i18n="searchAnotherCity" data-i18n-aria-label="backToSearch" aria-label="Back to search">&larr; Search</button>
                 <div class="weather-toggles">
                     <button id="units-toggle" class="units-toggle">°F</button>
                     <button id="time-toggle" class="units-toggle">12H</button>
@@ -131,7 +131,7 @@
         </ul>
         <p>Your preferences (dark mode, temperature units, time format, language, visual style, and section layout) are saved in your browser's local storage (not a cookie) so they persist between visits. You can clear all of this anytime by clearing your browser data.</p>
         <p>Your phone might ask you to "Install this page", which means creating a shortcut to a website on your home screen, known as a Progressive Web App (PWA). This makes the site act like a native app, allowing it to load faster, and appear with your other apps on your home screen.</p>
-        <p>This site is open source and supported by tips from our visitors. No data is sold, shared, or monetized in any way.</p>
+        <p>This site is open source. No data is sold, shared, or monetized in any way.</p>
     </div>
 
     <!-- Theme toggle + settings button (both floating, bottom-left) -->
@@ -152,12 +152,11 @@
         </label>
         <label><input type="checkbox" id="setting-remember-city" data-setting="rememberLastCity" checked> <span data-i18n="settingRememberCity">Remember last city</span></label>
         <label><input type="checkbox" id="setting-forecast-colors" data-setting="showForecastColors" checked> <span data-i18n="settingForecastColors">Show color backgrounds on 10-day forecast</span></label>
-        <label><input type="checkbox" id="setting-support-btn" data-setting="showSupportBtn" checked> <span data-i18n="settingSupportBtn">Show Annoying Support Button</span></label>
         <label><input type="checkbox" id="setting-weather-summary" data-setting="showWeatherSummary" checked> <span data-i18n="settingWeatherSummary">Show weather summary</span></label>
         <label><input type="checkbox" id="setting-theme-toggle" data-setting="showThemeToggle" checked> <span data-i18n="settingThemeToggle">Show Light Mode / Dark Mode button</span></label>
         <label><input type="checkbox" id="setting-units-btn" data-setting="showUnitsBtn" checked> <span data-i18n="settingUnitsBtn">Show °C / °F button</span></label>
         <label><input type="checkbox" id="setting-time-btn" data-setting="showTimeBtn" checked> <span data-i18n="settingTimeBtn">Show 12H / 24H button</span></label>
-        <label><input type="checkbox" id="setting-lock-btn" data-setting="showLockBtn" checked> <span data-i18n="settingLockBtn">Show Lock / Unlock button</span></label>
+        <label><input type="checkbox" id="setting-lock-btn" data-setting="showLockBtn" checked> <span data-i18n="settingLockBtn">Show Customize Layout button</span></label>
         <label><input type="checkbox" id="setting-nws-link" data-setting="showNwsLink" checked> <span data-i18n="settingNwsLink">Show NWS Radar link</span></label>
         <label><input type="checkbox" id="setting-show-section-btns" data-setting="showSectionButtons" checked> <span data-i18n="settingShowSectionButtons">Show "Show section" buttons when sections are hidden</span></label>
         <label><input type="checkbox" id="setting-translate-link" data-setting="showTranslateLink" checked> <span data-i18n="settingTranslateLink">Show alert translation link</span></label>
@@ -170,9 +169,6 @@
         <h3 data-i18n="language">Language</h3>
         <div id="language-list" class="language-list"></div>
     </div>
-
-    <!-- Floating donate button
-    <a id="donate-btn" href="https://ko-fi.com/noadsdude" target="_blank" rel="noopener" data-i18n="supportThisSite">Support this site</a> -->
 
     <script src="js/i18n.js"></script>
     <script src="js/app.js"></script>

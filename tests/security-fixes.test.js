@@ -21,11 +21,6 @@ function loadProxy(relPath) {
 const alerts = loadProxy('alerts-proxy/index.js');
 
 {
-    const req = { headers: { origin: 'https://www.noadsweather.com' } };
-    assert.strictEqual(alerts.getCorsOrigin(req), 'https://www.noadsweather.com');
-}
-
-{
     const req = { headers: { origin: 'https://skanga.github.io' } };
     assert.strictEqual(alerts.getCorsOrigin(req), 'https://skanga.github.io');
     assert.strictEqual(alerts.isAllowedRequest(req), true);

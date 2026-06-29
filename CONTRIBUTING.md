@@ -1,4 +1,4 @@
-# Contributing to NoAdsWeather
+# Contributing to Weather
 
 Thanks for your interest in contributing! This project is intentionally simple — plain HTML, CSS, and vanilla JavaScript with no runtime build step or frameworks. (The one exception is `scripts/build-cities.js`, a small Node script that regenerates static city pages — see "Regenerating city pages" below.)
 
@@ -61,7 +61,7 @@ There's no test suite (yet). Test manually:
 - Search an international city and postal code
 - Toggle dark mode
 - Toggle F/C and 12H/24H
-- Drag sections to reorder
+- Customize sections if needed
 - Minimize and hide sections
 - Test on mobile
 - Test the radar animation controls

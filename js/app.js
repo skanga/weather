@@ -1,5 +1,5 @@
 // =============================================================================
-// NoAdsWeather - app.js
+// Weather - app.js
 // =============================================================================
 
 // --- Units system ------------------------------------------------------------
@@ -1254,7 +1254,7 @@ async function fetchNWSAlerts(lat, lon) {
     try {
         const res = await fetch(
             `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
-            { headers: { 'User-Agent': 'NoAdsWeather (noadsweather.com)' } }
+            { headers: { 'User-Agent': 'Weather (https://skanga.github.io/noadsweather/)' } }
         );
         if (!res.ok) return [];
         const data = await res.json();
@@ -1385,6 +1385,11 @@ function generateSummary(current, hourly, daily) {
     } else if (tomorrowHigh !== null && todayHigh - tomorrowHigh >= 8) {
         follow.push(t('sumTomorrowCooling', { high: tomorrowHigh, unit: tempUnit() }));
     }
+    if (current.wind_gusts_10m >= (isImperial() ? 25 : 40)) {
+        follow.push(t('sumWindy', { gust: Math.round(current.wind_gusts_10m), unit: windUnit() }));
+    } else if (current.uv_index >= 7) {
+        follow.push(t('sumUvHigh'));
+    }
 
     return opening + '. ' + follow.join('. ') + '.';
 }
@@ -1398,6 +1403,12 @@ function fmtHour(date) {
     if (h < 12) return h + 'am';
     if (h === 12) return '12pm';
     return (h - 12) + 'pm';
+}
+
+function renderWeatherSummary(current, hourly, daily) {
+    const el = document.getElementById('weather-summary');
+    const time = new Date().toLocaleTimeString(getLocaleForDate(), { hour: 'numeric', minute: '2-digit' });
+    el.innerHTML = `${escapeHtml(generateSummary(current, hourly, daily))}<span class="updated-at">${escapeHtml(t('updatedAt', { time }))}</span>`;
 }
 
 function renderCurrent(current, airQuality) {
@@ -1506,6 +1517,7 @@ function renderDaily(daily, hourly) {
         const dateLabel = date.toLocaleDateString(getLocaleForDate(), { month: 'numeric', day: 'numeric' });
         const info = weatherInfo(daily.weather_code[i]);
         const precip = daily.precipitation_sum[i];
+        const chance = Math.max(...hourly.precipitation_probability.slice(i * 24, (i + 1) * 24).filter(Number.isFinite), 0);
         const minA = Math.min(...avgTemps);
         const rangeA = (Math.max(...avgTemps) - minA) || 1;
         const bg = tempBackground(avgTemps[i], minA, rangeA);
@@ -1518,7 +1530,7 @@ function renderDaily(daily, hourly) {
                 </div>
                 <div class="forecast-icon">${info.icon}</div>
                 <div class="forecast-condition">${info.text}</div>
-                <div class="forecast-precip">${precip > 0 ? '💧 ' + fmtPrecip(precip) : ''}</div>
+                <div class="forecast-precip">${chance || precip > 0 ? `💧 ${chance}%${precip > 0 ? ' / ' + fmtPrecip(precip) : ''}` : ''}</div>
             </div>
         `;
     }
@@ -1833,6 +1845,13 @@ function buildTranslateLink(text) {
     return ` <a href="${url}" target="_blank" rel="noopener" class="alert-translate-link">${t('translateAlert')}</a>`;
 }
 
+function formatAlertTime(value) {
+    if (!value) return '';
+    const date = new Date(typeof value === 'number' ? value * 1000 : value);
+    if (isNaN(date)) return '';
+    return date.toLocaleString(getLocaleForDate(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
 function renderAlerts(alerts) {
     const section = document.getElementById('alerts-section');
     if (!alerts || alerts.length === 0) {
@@ -1846,6 +1865,10 @@ function renderAlerts(alerts) {
         const p = alert.properties;
         const event = escapeHtml(p.event);
         const headline = escapeHtml(p.headline || '');
+        const severity = escapeHtml(p.severity || '');
+        const ends = formatAlertTime(p.ends || p.expires || p.end);
+        const areas = escapeHtml(p.areaDesc || '');
+        const meta = [severity, ends ? `until ${ends}` : '', areas].filter(Boolean).join(' · ');
         const descRaw = (p.description || '').trim();
         // Full text to translate = event + headline + description
         const fullText = [p.event, p.headline, descRaw].filter(Boolean).join('\n\n');
@@ -1870,6 +1893,7 @@ function renderAlerts(alerts) {
         html += `
             <div class="alert-item">
                 <strong>${event}</strong>${translateLink}
+                ${meta ? `<div class="alert-meta">${meta}</div>` : ''}
                 <div style="font-size:0.85rem;margin-top:0.25rem;">${headline}</div>
                 ${descHtml}
             </div>
@@ -2640,8 +2664,7 @@ async function fetchAllWeatherData(lat, lon, country, region) {
         _lastMeteoData = meteo;
         _sunriseTime = new Date(meteo.daily.sunrise[0]);
         _sunsetTime = new Date(meteo.daily.sunset[0]);
-        document.getElementById('weather-summary').textContent =
-            generateSummary(meteo.current, meteo.hourly, meteo.daily);
+        renderWeatherSummary(meteo.current, meteo.hourly, meteo.daily);
         renderCurrent(meteo.current, null); // AQI added later when it arrives
         renderHourly(meteo.hourly);
         renderDaily(meteo.daily, meteo.hourly);
@@ -2696,8 +2719,7 @@ function rerenderWeatherFromCache() {
     const alerts = _lastAlerts;
     const { lat, lon } = _lastPickedLocation;
 
-    document.getElementById('weather-summary').textContent =
-        generateSummary(meteo.current, meteo.hourly, meteo.daily);
+    renderWeatherSummary(meteo.current, meteo.hourly, meteo.daily);
     renderCurrent(meteo.current, airQuality);
     renderHourly(meteo.hourly);
     renderDaily(meteo.daily, meteo.hourly);
@@ -2872,18 +2894,18 @@ document.getElementById('time-toggle').addEventListener('click', () => {
 // --- Layout Lock -------------------------------------------------------------
 
 function applyLayoutLock() {
-    const locked = localStorage.getItem('layoutLocked') === 'true';
+    const locked = localStorage.getItem('layoutLocked') !== 'false';
     document.body.classList.toggle('layout-locked', locked);
     const btn = document.getElementById('lock-toggle');
     if (btn) {
-        btn.textContent = locked ? '🔒' : '🔓';
-        btn.title = locked ? t('unlockLayout') : t('lockLayout');
+        btn.textContent = locked ? '✎' : '✓';
+        btn.title = locked ? t('lockLayout') : t('unlockLayout');
     }
 }
 
 document.getElementById('lock-toggle').addEventListener('click', () => {
-    const locked = localStorage.getItem('layoutLocked') === 'true';
-    localStorage.setItem('layoutLocked', !locked);
+    const locked = localStorage.getItem('layoutLocked') !== 'false';
+    localStorage.setItem('layoutLocked', locked ? 'false' : 'true');
     applyLayoutLock();
 });
 
@@ -2893,7 +2915,6 @@ applyLayoutLock();
 
 function applySettings() {
     const showColors = getSettingsBool('showForecastColors');
-    const showSupport = getSettingsBool('showSupportBtn');
     const showSummary = getSettingsBool('showWeatherSummary');
 
     // Forecast colors
@@ -2904,10 +2925,6 @@ function applySettings() {
             el.style.background = 'transparent';
         });
     }
-
-    // Support button
-    const donateBtn = document.getElementById('donate-btn');
-    if (donateBtn) donateBtn.style.display = showSupport ? '' : 'none';
 
     // Weather summary
     const summary = document.getElementById('weather-summary');
@@ -2974,7 +2991,6 @@ document.querySelectorAll('#settings-popover input[data-setting]').forEach(cb =>
 // Revert to defaults
 document.getElementById('settings-revert').addEventListener('click', () => {
     localStorage.setItem('showForecastColors', 'true');
-    localStorage.setItem('showSupportBtn', 'true');
     localStorage.setItem('showWeatherSummary', 'true');
     localStorage.setItem('showThemeToggle', 'true');
     localStorage.setItem('showUnitsBtn', 'true');
@@ -2985,6 +3001,7 @@ document.getElementById('settings-revert').addEventListener('click', () => {
     localStorage.setItem('showTranslateLink', 'true');
     localStorage.setItem('autoPlayRadar', 'false');
     localStorage.setItem('rememberLastCity', 'true');
+    localStorage.setItem('layoutLocked', 'true');
     localStorage.removeItem('sectionPrefs');
     applySettings();
     if (_lastLat !== null) {
@@ -3038,7 +3055,7 @@ function getLocationFromURL() {
 }
 
 // "Remember last city" — persists the last successfully loaded location and
-// rehydrates it on bare visits to noadsweather.com. Uses the same shape as
+// rehydrates it on bare visits. Uses the same shape as
 // getLocationFromURL so loadFromURL can consume it without branching.
 function saveLastLocation(query, location) {
     if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lon)) return;
@@ -3295,7 +3312,7 @@ initChartDrag();
 
 (function () {
     const manifest = {
-        name: 'NoAdsWeather',
+        name: 'Weather',
         short_name: 'Weather',
         description: t('tagline'),
         start_url: window.location.href,

@@ -8,8 +8,8 @@ const MAX_CACHE_ENTRIES = 1000; // prevent unbounded growth on long-lived instan
 // callers can spoof Origin/Referer. Real abuse control belongs at the
 // platform/API layer. OPTIONS preflight is whitelisted earlier because
 // browsers may omit Origin on preflight.
-const ALLOWED_HOSTS = new Set(['noadsweather.com', 'www.noadsweather.com', 'skanga.github.io']);
-const DEFAULT_CORS_ORIGIN = 'https://noadsweather.com';
+const ALLOWED_HOSTS = new Set(['skanga.github.io']);
+const DEFAULT_CORS_ORIGIN = 'https://skanga.github.io';
 
 function getCorsOrigin(req) {
     const origin = req.headers.origin || '';

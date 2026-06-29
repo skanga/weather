@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const about = fs.readFileSync(path.join(root, 'about', 'index.html'), 'utf8');
 const privacy = fs.readFileSync(path.join(root, 'privacy.html'), 'utf8');
+const city = fs.readFileSync(path.join(root, 'cities', 'new-york-ny', 'index.html'), 'utf8');
 
 assert.doesNotMatch(index, /href="\/about\/"/);
 assert.match(index, /href="about\/"/);
@@ -21,3 +22,7 @@ assert.match(about, /href="\.\.\/cities\/new-york-ny\/"/);
 assert.match(about, /src="\.\.\/js\/i18n\.js"/);
 assert.match(privacy, /href="\.\/"/);
 assert.match(privacy, /href="about\/"/);
+assert.match(city, /href="\/noadsweather\/css\/style\.css"/);
+assert.match(city, /src="\/noadsweather\/js\/i18n\.js"/);
+assert.match(city, /src="\/noadsweather\/js\/app\.js"/);
+assert.match(city, /href="\/noadsweather\/about\/"/);

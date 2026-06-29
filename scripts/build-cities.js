@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Build script for noadsweather.com SEO city landing pages.
+// Build script for Weather SEO city landing pages.
 // Reads scripts/cities.json + js/i18n.js TRANSLATIONS and writes static
 // HTML files to cities/{slug}/index.html. Also generates sitemap.xml.
 //
@@ -11,7 +11,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SITE_URL = 'https://noadsweather.com';
+const SITE_URL = 'https://skanga.github.io/noadsweather';
+const SITE_BASE_PATH = '/noadsweather';
 const CITIES_JSON = path.join(__dirname, 'cities.json');
 const TEMPLATE_HTML = path.join(ROOT, 'index.html');
 const I18N_JS = path.join(ROOT, 'js', 'i18n.js');
@@ -122,7 +123,7 @@ function renderTemplate(page) {
 
     // 2. title
     html = html.replace(/<title>[^<]*<\/title>/,
-        `<title>${escapeHtml(page.title)} — NoAdsWeather</title>`);
+        `<title>${escapeHtml(page.title)} — Weather</title>`);
 
     // 3. meta description
     html = html.replace(/<meta\s+name="description"\s+content="[^"]*">/,
@@ -132,13 +133,14 @@ function renderTemplate(page) {
     //    before the existing stylesheet link so it appears before app.js loads.
     const headInjection = buildHeadInjection(page);
     html = html.replace('<link rel="stylesheet" href="css/style.css">',
-        headInjection + '\n    <link rel="stylesheet" href="/css/style.css">');
+        headInjection + `\n    <link rel="stylesheet" href="${SITE_BASE_PATH}/css/style.css">`);
 
     // 5. Make script paths absolute so they resolve from /cities/{slug}/
     html = html.replace(/<script src="js\/i18n\.js"><\/script>/,
-        '<script src="/js/i18n.js"></script>');
+        `<script src="${SITE_BASE_PATH}/js/i18n.js"></script>`);
     html = html.replace(/<script src="js\/app\.js"><\/script>/,
-        '<script src="/js/app.js"></script>');
+        `<script src="${SITE_BASE_PATH}/js/app.js"></script>`);
+    html = html.replace(/href="about\/"/g, `href="${SITE_BASE_PATH}/about/"`);
 
     // 6. Pre-fill the H1 so the page has unique body content even before
     //    app.js runs (avoids the doorway-page risk of 77 byte-identical
