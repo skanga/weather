@@ -1428,6 +1428,12 @@ body.is-dragging .weather-col:empty {
     white-space: nowrap;
 }
 
+.hourly-precip {
+    color: var(--accent-blue);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
 /* Daily forecast - unified scroll */
 .forecast-scroll-outer {
     overflow-x: auto;

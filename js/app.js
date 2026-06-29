@@ -104,6 +104,11 @@ function fmtPrecip(val) {
     return val.toFixed(1) + 'mm';
 }
 
+function fmtVisibility(meters) {
+    if (!Number.isFinite(meters)) return '—';
+    return isImperial() ? `${(meters / 1609.344).toFixed(1)} mi` : `${(meters / 1000).toFixed(1)} km`;
+}
+
 // --- Section Preferences System -----------------------------------------------
 
 const DEFAULT_SECTION_ORDER = [
@@ -1211,7 +1216,7 @@ async function fetchOpenMeteo(lat, lon) {
     const params = new URLSearchParams({
         latitude: lat,
         longitude: lon,
-        current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index',
+        current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility',
         hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,cloud_cover,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure',
         daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset',
         temperature_unit: units.temp,
@@ -1447,6 +1452,10 @@ function renderCurrent(current, airQuality) {
                 <span class="detail-label">${t('gusts')}</span>
                 <span class="detail-value">${Math.round(current.wind_gusts_10m)} ${windUnit()}</span>
             </div>
+            <div class="detail-item">
+                <span class="detail-label">${t('visibility')}</span>
+                <span class="detail-value">${fmtVisibility(current.visibility)}</span>
+            </div>
             ${aqiInfo ? `
             <div class="detail-item">
                 <span class="detail-label">${t('airQuality')}</span>
@@ -1475,12 +1484,14 @@ function renderHourly(hourly) {
             : (hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`);
         const info = weatherInfo(hourly.weather_code[i], isHourNight(hourly.time[i]));
         const wind = Math.round(hourly.wind_speed_10m[i]);
+        const precipChance = hourly.precipitation_probability[i];
         html += `
             <div class="hourly-item">
                 <div>${label}</div>
                 <div style="font-size:1.3rem;">${info.icon}</div>
                 <div style="font-weight:600;">${Math.round(hourly.temperature_2m[i])}°</div>
                 <div class="hourly-wind">${wind} ${windUnit()}</div>
+                ${precipChance > 0 ? `<div class="hourly-precip">💧 ${precipChance}%</div>` : ''}
             </div>
         `;
     }

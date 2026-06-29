@@ -44,6 +44,7 @@ const TRANSLATIONS = {
         gusts: 'Gusts',
         airQuality: 'Air Quality',
         uvIndex: 'UV Index',
+        visibility: 'Visibility',
         nwsRadarLink: 'NWS radar ↗',
         language: 'Language',
 
