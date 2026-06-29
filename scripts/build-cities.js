@@ -11,8 +11,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SITE_URL = 'https://skanga.github.io/noadsweather';
-const SITE_BASE_PATH = '/noadsweather';
+const SITE_URL = 'https://skanga.github.io/weather';
+const SITE_BASE_PATH = '/weather';
 const CITIES_JSON = path.join(__dirname, 'cities.json');
 const TEMPLATE_HTML = path.join(ROOT, 'index.html');
 const I18N_JS = path.join(ROOT, 'js', 'i18n.js');

@@ -1259,7 +1259,7 @@ async function fetchNWSAlerts(lat, lon) {
     try {
         const res = await fetch(
             `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
-            { headers: { 'User-Agent': 'Weather (https://skanga.github.io/noadsweather/)' } }
+            { headers: { 'User-Agent': 'Weather (https://skanga.github.io/weather/)' } }
         );
         if (!res.ok) return [];
         const data = await res.json();

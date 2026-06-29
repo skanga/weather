@@ -25,4 +25,4 @@ for (const relPath of files) {
 }
 
 assert.match(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), /<h1>Weather<\/h1>/);
-assert.match(fs.readFileSync(path.join(root, 'scripts/build-cities.js'), 'utf8'), /https:\/\/skanga\.github\.io\/noadsweather/);
+assert.match(fs.readFileSync(path.join(root, 'scripts/build-cities.js'), 'utf8'), /https:\/\/skanga\.github\.io\/weather/);

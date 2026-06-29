@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://skanga.github.io/noadsweather/sitemap.xml
+Sitemap: https://skanga.github.io/weather/sitemap.xml

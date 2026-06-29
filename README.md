@@ -1,6 +1,6 @@
 # Weather
 
-**Weather without the clutter.** [skanga.github.io/noadsweather](https://skanga.github.io/noadsweather/)
+**Weather without the clutter.** [skanga.github.io/weather](https://skanga.github.io/weather/)
 
 A fast, ad-free, privacy-respecting weather website. No tracking, no cookies, no bloat. Just weather.
 
