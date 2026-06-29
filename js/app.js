@@ -1484,7 +1484,7 @@ function renderCurrent(current, airQuality) {
     `;
 }
 
-const POLLEN_PROXY_URL = 'https://pollen-proxy-15838356607.us-central1.run.app';
+const POLLEN_PROXY_URL = window.POLLEN_PROXY_URL || 'https://pollen-proxy-15838356607.us-central1.run.app';
 
 function renderPollen(airQuality, lat, lon) {
     const section = document.getElementById('details-section');

@@ -28,6 +28,14 @@ const pollen = loadProxy('pollen-proxy/index.js');
 }
 
 {
+    const req = { headers: { origin: 'https://skanga.github.io' } };
+    assert.strictEqual(alerts.getCorsOrigin(req), 'https://skanga.github.io');
+    assert.strictEqual(pollen.getCorsOrigin(req), 'https://skanga.github.io');
+    assert.strictEqual(alerts.isAllowedRequest(req), true);
+    assert.strictEqual(pollen.isAllowedRequest(req), true);
+}
+
+{
     const nowSec = Math.floor(Date.now() / 1000);
     const cached = {
         data: {
