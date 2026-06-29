@@ -1869,11 +1869,20 @@ function renderAlerts(alerts) {
     const section = document.getElementById('alerts-section');
     if (!alerts || alerts.length === 0) {
         section.hidden = true;
+        section.classList.remove('alerts-collapsed');
         return;
     }
     section.hidden = false;
+    const wasCollapsed = section.classList.contains('alerts-collapsed');
     const DESC_PREVIEW_CHARS = 300;
-    let html = `<h2>${t('weatherAlerts')}</h2>`;
+    let html = `
+        <div class="alerts-header">
+            <h2>${t('weatherAlerts')}</h2>
+            <button type="button" class="alert-toggle" aria-expanded="${wasCollapsed ? 'false' : 'true'}">
+                ${wasCollapsed ? t('showMore') : t('showLess')}
+            </button>
+        </div>
+        <div class="alerts-list">`;
     for (const alert of alerts) {
         const p = alert.properties;
         const event = escapeHtml(p.event);
@@ -1912,7 +1921,18 @@ function renderAlerts(alerts) {
             </div>
         `;
     }
+    html += '</div>';
     section.innerHTML = html;
+    section.classList.toggle('alerts-collapsed', wasCollapsed);
+
+    const toggle = section.querySelector('.alert-toggle');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            const collapsed = section.classList.toggle('alerts-collapsed');
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggle.textContent = collapsed ? t('showMore') : t('showLess');
+        });
+    }
 
     // Hide preview when details is opened (so we don't show both)
     section.querySelectorAll('details.alert-desc').forEach(d => {

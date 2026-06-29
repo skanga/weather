@@ -1231,6 +1231,31 @@ section h2 {
     margin-bottom: 1rem;
 }
 
+.alerts-header {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.alerts-header h2 {
+    margin: 0;
+}
+
+.alert-toggle {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: var(--alert-text);
+    cursor: pointer;
+    flex-shrink: 0;
+    font: inherit;
+    padding: 0.25rem 0.5rem;
+}
+
+#alerts-section.alerts-collapsed .alerts-list {
+    display: none;
+}
+
 .alert-item {
     margin-bottom: 0.9rem;
 }
