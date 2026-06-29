@@ -1878,8 +1878,8 @@ function renderAlerts(alerts) {
     let html = `
         <div class="alerts-header">
             <h2>${t('weatherAlerts')}</h2>
-            <button type="button" class="alert-toggle" aria-expanded="${wasCollapsed ? 'false' : 'true'}">
-                ${wasCollapsed ? t('showMore') : t('showLess')}
+            <button type="button" class="alert-toggle" aria-expanded="${wasCollapsed ? 'false' : 'true'}" aria-label="${wasCollapsed ? t('showMore') : t('showLess')}">
+                ${wasCollapsed ? '+' : '−'}
             </button>
         </div>
         <div class="alerts-list">`;
@@ -1930,7 +1930,8 @@ function renderAlerts(alerts) {
         toggle.addEventListener('click', () => {
             const collapsed = section.classList.toggle('alerts-collapsed');
             toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-            toggle.textContent = collapsed ? t('showMore') : t('showLess');
+            toggle.setAttribute('aria-label', collapsed ? t('showMore') : t('showLess'));
+            toggle.textContent = collapsed ? '+' : '−';
         });
     }
 

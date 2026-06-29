@@ -1229,6 +1229,7 @@ section h2 {
     border: 2px solid var(--alert-border);
     color: var(--alert-text);
     margin-bottom: 1rem;
+    padding: 0.65rem;
 }
 
 .alerts-header {
@@ -1244,12 +1245,24 @@ section h2 {
 
 .alert-toggle {
     background: transparent;
-    border: 1px solid currentColor;
+    border: 0;
     color: var(--alert-text);
     cursor: pointer;
     flex-shrink: 0;
     font: inherit;
-    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    height: 1.45rem;
+    line-height: 1;
+    padding: 0;
+    width: 1.45rem;
+}
+
+#alerts-section.alerts-collapsed {
+    padding: 0.15rem;
+}
+
+#alerts-section.alerts-collapsed h2 {
+    font-size: 0.6rem;
 }
 
 #alerts-section.alerts-collapsed .alerts-list {
