@@ -1351,6 +1351,9 @@ body.is-dragging .weather-col:empty {
         flex-direction: column;
         align-items: stretch;
     }
+    .weather-col:empty {
+        min-height: 0;
+    }
     .section-controls {
         opacity: 1;
     }
