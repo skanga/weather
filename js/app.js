@@ -2850,7 +2850,11 @@ function showWeather(location, query) {
     homeView.hidden = true;
     weatherView.hidden = false;
     // Build location label: "City, Region" or "City, Country" if no region
-    const secondary = location.region || location.country || '';
+    let secondary = location.region || location.country || '';
+    if ((location.country === 'United States' || location.country === 'US') && location.region) {
+        const state = Object.entries(STATE_ABBRS).find(([, name]) => name === location.region.toLowerCase());
+        if (state) secondary = state[0].toUpperCase();
+    }
     let label = secondary ? `${location.name}, ${secondary}` : location.name;
     // Append postal code if the query looks like one
     const trimmedQuery = query ? query.trim() : '';
