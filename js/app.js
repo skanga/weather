@@ -3143,9 +3143,8 @@ function getLocationFromStorage() {
 //      French-speaking user landing on /cities/lisboa/ from search isn't
 //      forced into Portuguese on every visit).
 //   2. Bootstrap directly into the weather view (skip home view).
-//   3. Override the H1 with the translated city-page title.
-//   4. Show the dismissible SEO blurb (unless already hidden).
-//   5. Save lastLocation so auto-resume returns the user to this city.
+//   3. Show the dismissible SEO blurb (unless already hidden).
+//   4. Save lastLocation so auto-resume returns the user to this city.
 // Returns true if SEO mode was activated, false otherwise.
 function initSeoCity() {
     const seo = window._seoCity;
@@ -3188,14 +3187,12 @@ function initSeoCity() {
     fetchAllWeatherData(location.lat, location.lon, location.country, location.region);
     saveLastLocation('', location);
 
-    // 3. Override the H1 with translated city-page title
     const cityName = seo.displayName || seo.name;
-    locationName.textContent = t('cityPageTitle', { city: cityName });
 
-    // 4. Render the SEO blurb unless dismissed
+    // 3. Render the SEO blurb unless dismissed
     renderSeoBlurb(cityName);
 
-    // 5. Release the auto-resume gate (the inline <head> script may have set it)
+    // 4. Release the auto-resume gate (the inline <head> script may have set it)
     document.documentElement.removeAttribute('data-auto-resume');
 
     return true;
