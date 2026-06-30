@@ -3203,9 +3203,13 @@ function setLanguageOverride(lang) {
     }
 }
 
+function getStoredLanguage() {
+    try { return localStorage.getItem('language'); } catch { return null; }
+}
+
 function getCurrentLang() {
     if (_languageOverride) return _languageOverride;
-    const stored = localStorage.getItem('language');
+    const stored = getStoredLanguage();
     if (stored && TRANSLATIONS[stored]) return stored;
     const browser = (navigator.language || '').slice(0, 2).toLowerCase();
     return TRANSLATIONS[browser] ? browser : 'en';
@@ -3235,7 +3239,7 @@ function t(key, vars) {
 }
 
 function setLanguage(lang) {
-    localStorage.setItem('language', lang);
+    try { localStorage.setItem('language', lang); } catch {}
     _languageOverride = null;  // user picked explicitly; URL override no longer applies
     location.reload();
 }

@@ -36,15 +36,27 @@ let units = {
 
 function isImperial() { return units.temp === 'fahrenheit'; }
 
+function storageGet(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function storageSet(key, value) {
+    try { localStorage.setItem(key, value); } catch {}
+}
+
+function storageRemove(key) {
+    try { localStorage.removeItem(key); } catch {}
+}
+
 function saveUnitsPref() {
-    localStorage.setItem('unitsPref', JSON.stringify({ temp: units.temp, time24h: units.time24h }));
+    storageSet('unitsPref', JSON.stringify({ temp: units.temp, time24h: units.time24h }));
 }
 
 function loadUnitsPref() {
     try {
-        return JSON.parse(localStorage.getItem('unitsPref') || 'null');
+        return JSON.parse(storageGet('unitsPref') || 'null');
     } catch {
-        localStorage.removeItem('unitsPref');
+        storageRemove('unitsPref');
         return null;
     }
 }
@@ -151,15 +163,15 @@ function loadSectionPrefs() {
 
     let stored = null;
     try {
-        stored = JSON.parse(localStorage.getItem('sectionPrefs') || 'null');
+        stored = JSON.parse(storageGet('sectionPrefs') || 'null');
     } catch {
         // Corrupt storage — reset
-        localStorage.removeItem('sectionPrefs');
+        storageRemove('sectionPrefs');
     }
 
     // Validate — if missing layoutList, reset
     if (stored && !stored.layoutList) {
-        localStorage.removeItem('sectionPrefs');
+        storageRemove('sectionPrefs');
         return { layoutList: JSON.parse(JSON.stringify(DEFAULT_LAYOUT_LIST)), hidden: [], minimized: [], chartOrder: [...DEFAULT_CHART_ORDER], hiddenCharts: [] };
     }
     const prefs = stored || {
@@ -179,7 +191,7 @@ function loadSectionPrefs() {
 }
 
 function saveSectionPrefs(prefs) {
-    localStorage.setItem('sectionPrefs', JSON.stringify(prefs));
+    storageSet('sectionPrefs', JSON.stringify(prefs));
 }
 
 function saveLayoutFromDOM() {
@@ -742,7 +754,7 @@ function assetUrl(path) {
 const SUPPORTED_STYLES = ['default', 'editorial', 'bulletin', 'quiet'];
 
 function getCurrentStyle() {
-    const stored = localStorage.getItem('style');
+    const stored = storageGet('style');
     return SUPPORTED_STYLES.includes(stored) ? stored : 'default';
 }
 
@@ -844,7 +856,7 @@ function tempColorThreshold() { return isImperial() ? 5 : 3; }
 const SETTINGS_DEFAULT_FALSE = new Set(['autoPlayRadar']);
 
 function getSettingsBool(key) {
-    const v = localStorage.getItem(key);
+    const v = storageGet(key);
     if (v === null) return !SETTINGS_DEFAULT_FALSE.has(key);
     return v === 'true';
 }
@@ -1216,7 +1228,7 @@ async function fetchOpenMeteo(lat, lon) {
     const params = new URLSearchParams({
         latitude: lat,
         longitude: lon,
-        current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility',
+        current: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility',
         hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,weather_code,cloud_cover,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure',
         daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset',
         temperature_unit: units.temp,
@@ -2262,7 +2274,7 @@ async function loadRadar(lat, lon) {
 
         const speeds = [2000, 1000, 500, 250, 125];
         const speedLabels = ['0.25x', '0.5x', '1x', '2x', '4x'];
-        let speedIdx = parseInt(localStorage.getItem('radarSpeed') || '2', 10);
+        let speedIdx = parseInt(storageGet('radarSpeed') || '2', 10);
         if (speedIdx < 0 || speedIdx >= speeds.length) speedIdx = 2;
 
         // Auto-play setting (default true). When false, show only the latest
@@ -2410,7 +2422,7 @@ async function loadRadar(lat, lon) {
         if (slowerBtn) slowerBtn.addEventListener('click', () => {
             if (speedIdx > 0) {
                 speedIdx--;
-                localStorage.setItem('radarSpeed', speedIdx);
+                storageSet('radarSpeed', speedIdx);
                 updateSpeedLabel();
                 startAnimation();
             }
@@ -2420,7 +2432,7 @@ async function loadRadar(lat, lon) {
         if (fasterBtn) fasterBtn.addEventListener('click', () => {
             if (speedIdx < speeds.length - 1) {
                 speedIdx++;
-                localStorage.setItem('radarSpeed', speedIdx);
+                storageSet('radarSpeed', speedIdx);
                 updateSpeedLabel();
                 startAnimation();
             }
@@ -2796,7 +2808,7 @@ function mergeRecentLocation(list, query, location) {
 
 function loadRecentLocations() {
     let raw;
-    try { raw = localStorage.getItem('recentLocations'); } catch (e) { return []; }
+    raw = storageGet('recentLocations');
     if (!raw) return [];
     try {
         const parsed = JSON.parse(raw);
@@ -2812,7 +2824,7 @@ function loadRecentLocations() {
 
 function saveRecentLocation(query, location) {
     const recent = mergeRecentLocation(loadRecentLocations(), query, location);
-    try { localStorage.setItem('recentLocations', JSON.stringify(recent)); } catch (e) { /* quota / private mode — ignore */ }
+    storageSet('recentLocations', JSON.stringify(recent));
 }
 
 function recentLocationLabel(item) {
@@ -2933,7 +2945,7 @@ document.getElementById('time-toggle').addEventListener('click', () => {
 // --- Layout Lock -------------------------------------------------------------
 
 function applyLayoutLock() {
-    const locked = localStorage.getItem('layoutLocked') !== 'false';
+    const locked = storageGet('layoutLocked') !== 'false';
     document.body.classList.toggle('layout-locked', locked);
     const btn = document.getElementById('lock-toggle');
     if (btn) {
@@ -2943,8 +2955,8 @@ function applyLayoutLock() {
 }
 
 document.getElementById('lock-toggle').addEventListener('click', () => {
-    const locked = localStorage.getItem('layoutLocked') !== 'false';
-    localStorage.setItem('layoutLocked', locked ? 'false' : 'true');
+    const locked = storageGet('layoutLocked') !== 'false';
+    storageSet('layoutLocked', locked ? 'false' : 'true');
     applyLayoutLock();
 });
 
@@ -3022,26 +3034,26 @@ document.addEventListener('keydown', (e) => {
 // Checkbox handlers
 document.querySelectorAll('#settings-popover input[data-setting]').forEach(cb => {
     cb.addEventListener('change', (e) => {
-        localStorage.setItem(e.target.dataset.setting, e.target.checked);
+        storageSet(e.target.dataset.setting, e.target.checked);
         applySettings();
     });
 });
 
 // Revert to defaults
 document.getElementById('settings-revert').addEventListener('click', () => {
-    localStorage.setItem('showForecastColors', 'true');
-    localStorage.setItem('showWeatherSummary', 'true');
-    localStorage.setItem('showThemeToggle', 'true');
-    localStorage.setItem('showUnitsBtn', 'true');
-    localStorage.setItem('showTimeBtn', 'true');
-    localStorage.setItem('showLockBtn', 'true');
-    localStorage.setItem('showNwsLink', 'true');
-    localStorage.setItem('showSectionButtons', 'true');
-    localStorage.setItem('showTranslateLink', 'true');
-    localStorage.setItem('autoPlayRadar', 'false');
-    localStorage.setItem('rememberLastCity', 'true');
-    localStorage.setItem('layoutLocked', 'true');
-    localStorage.removeItem('sectionPrefs');
+    storageSet('showForecastColors', 'true');
+    storageSet('showWeatherSummary', 'true');
+    storageSet('showThemeToggle', 'true');
+    storageSet('showUnitsBtn', 'true');
+    storageSet('showTimeBtn', 'true');
+    storageSet('showLockBtn', 'true');
+    storageSet('showNwsLink', 'true');
+    storageSet('showSectionButtons', 'true');
+    storageSet('showTranslateLink', 'true');
+    storageSet('autoPlayRadar', 'false');
+    storageSet('rememberLastCity', 'true');
+    storageSet('layoutLocked', 'true');
+    storageRemove('sectionPrefs');
     applySettings();
     if (_lastLat !== null) {
         fetchAllWeatherData(_lastLat, _lastLon, _lastCountry, _lastRegion);
@@ -3099,7 +3111,7 @@ function getLocationFromURL() {
 function saveLastLocation(query, location) {
     if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lon)) return;
     try {
-        localStorage.setItem('lastLocation', JSON.stringify({
+        storageSet('lastLocation', JSON.stringify({
             query: query || '',
             name: location.name || '',
             region: location.region || '',
@@ -3113,7 +3125,7 @@ function saveLastLocation(query, location) {
 
 function getLocationFromStorage() {
     let raw;
-    try { raw = localStorage.getItem('lastLocation'); } catch (e) { return null; }
+    raw = storageGet('lastLocation');
     if (!raw) return null;
     let parsed;
     try { parsed = JSON.parse(raw); } catch (e) { return null; }
@@ -3161,7 +3173,7 @@ function initSeoCity() {
     //    override is skipped, and the user's pick wins). The HTML <title>
     //    and <meta description> are baked in at build time in the URL's
     //    language regardless — that's what Google indexes.
-    const hasExplicitPref = !!localStorage.getItem('language');
+    const hasExplicitPref = !!storageGet('language');
     if (!hasExplicitPref && typeof setLanguageOverride === 'function') {
         setLanguageOverride(seo.lang);
     }
@@ -3199,7 +3211,7 @@ function initSeoCity() {
 }
 
 function renderSeoBlurb(cityName) {
-    if (localStorage.getItem('hideCitySeoBlurb') === 'true') return;
+    if (storageGet('hideCitySeoBlurb') === 'true') return;
     const el = document.getElementById('seo-blurb');
     const textEl = document.getElementById('seo-blurb-text');
     const linkEl = document.getElementById('seo-blurb-hide-link');
@@ -3212,7 +3224,7 @@ function renderSeoBlurb(cityName) {
 
     const dismiss = (e) => {
         if (e) e.preventDefault();
-        localStorage.setItem('hideCitySeoBlurb', 'true');
+        storageSet('hideCitySeoBlurb', 'true');
         el.hidden = true;
     };
     closeBtn.addEventListener('click', dismiss);
@@ -3264,7 +3276,7 @@ applyTranslations();
     sel.value = getCurrentStyle();
     sel.addEventListener('change', () => {
         const newStyle = sel.value;
-        localStorage.setItem('style', newStyle);
+        storageSet('style', newStyle);
         applyStyle(newStyle);
     });
 })();
@@ -3372,12 +3384,12 @@ initChartDrag();
 
 (function () {
     const toggle = document.getElementById('theme-toggle');
-    const stored = localStorage.getItem('theme');
+    const stored = storageGet('theme');
 
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-        localStorage.setItem('theme', theme);
+        storageSet('theme', theme);
         updateDayBackgrounds();
         applySettings();
         // Re-render weather from cache so any theme-dependent rendering (e.g.

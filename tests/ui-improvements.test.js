@@ -19,7 +19,7 @@ assert.match(app, /alerts-collapsed/);
 assert.match(app, /aria-expanded/);
 assert.match(app, /aria-label="\$\{wasCollapsed \? t\('showMore'\) : t\('showLess'\)\}"/);
 assert.match(app, /collapsed \? '\+' : '−'/);
-assert.match(app, /localStorage\.getItem\('layoutLocked'\) !== 'false'/);
+assert.match(app, /storageGet\('layoutLocked'\) !== 'false'/);
 assert.match(app, /hourly\.wind_speed_10m\[i\]/);
 assert.match(app, /windUnit\(\)/);
 assert.match(app, /current: '.*visibility/);

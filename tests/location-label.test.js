@@ -49,6 +49,7 @@ function saveLastLocation() {}
 function renderSeoBlurb() {}
 function t(key, values) { return key === 'cityPageTitle' ? values.city + ' Weather' : key; }
 ${functionSource('normalizeCountry')}
+${functionSource('storageGet')}
 ${functionSource('showWeather')}
 ${functionSource('initSeoCity')}
 return { initSeoCity, locationName };

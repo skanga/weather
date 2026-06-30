@@ -92,7 +92,7 @@ functions.http('alerts', async (req, res) => {
     const cacheKey = `owm:${lat.toFixed(2)},${lon.toFixed(2)}`;
     const cached = CACHE.get(cacheKey);
     if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-        res.json(cached.data);
+        res.json(activeCachedAlerts(cached) || { features: [] });
         return;
     }
 
