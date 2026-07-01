@@ -1272,10 +1272,20 @@ async function fetchNWSAlerts(lat, lon) {
         );
         if (!res.ok) return [];
         const data = await res.json();
-        return data.features || [];
+        return dedupeNWSAlerts(data.features || []);
     } catch {
         return [];
     }
+}
+
+// NWS often returns superseded/overlapping alerts (e.g. several Air Quality
+// Alerts for the same area issued hours apart). Keep the most recently sent
+// one per event+area.
+function dedupeNWSAlerts(features) {
+    const byRecent = [...features].sort(
+        (a, b) => (b.properties.sent || '').localeCompare(a.properties.sent || '')
+    );
+    return dedupeAlerts(byRecent, f => f.properties.event, f => f.properties.areaDesc);
 }
 
 function titleCase(s) {
@@ -1523,15 +1533,15 @@ function renderCurrent(current, airQuality) {
                 <span class="detail-label">${t('visibility')}</span>
                 <span class="detail-value">${fmtVisibility(current.visibility)}</span>
             </div>
-            ${aqiInfo ? `
-            <div class="detail-item">
-                <span class="detail-label">${t('airQuality')}</span>
-                <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
-            </div>` : ''}
             <div class="detail-item">
                 <span class="detail-label">${t('uvIndex')}</span>
                 <span class="detail-value" style="color:${uvInfo.color};">${uvVal} ${uvInfo.text}</span>
             </div>
+            ${aqiInfo ? `
+            <div class="detail-item detail-wide">
+                <span class="detail-label">${t('airQuality')}</span>
+                <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
+            </div>` : ''}
         </div>
     `;
 }
@@ -1976,7 +1986,6 @@ function renderAlerts(alerts) {
     }
     section.hidden = false;
     const wasCollapsed = section.classList.contains('alerts-collapsed');
-    const DESC_PREVIEW_CHARS = 300;
     let html = `
         <div class="alerts-header">
             <h2>${t('weatherAlerts')}</h2>
@@ -2000,19 +2009,11 @@ function renderAlerts(alerts) {
         let descHtml = '';
         if (descRaw) {
             const descEsc = escapeHtml(descRaw).replace(/\n/g, '<br>');
-            if (descRaw.length > DESC_PREVIEW_CHARS) {
-                const previewEsc = escapeHtml(descRaw.slice(0, DESC_PREVIEW_CHARS).trimEnd() + '…').replace(/\n/g, '<br>');
-                descHtml = `
-                    <details class="alert-desc" style="font-size:0.8rem;margin-top:0.4rem;">
-                        <summary style="cursor:pointer;list-style:none;">
-                            <span class="alert-desc-preview">${previewEsc}</span>
-                            <span class="alert-desc-more" style="text-decoration:underline;"> ${t('showMore')}</span>
-                        </summary>
-                        <div style="margin-top:0.4rem;white-space:pre-wrap;">${descEsc}</div>
-                    </details>`;
-            } else {
-                descHtml = `<div class="alert-desc" style="font-size:0.8rem;margin-top:0.4rem;white-space:pre-wrap;">${descEsc}</div>`;
-            }
+            descHtml = `
+                <details class="alert-desc" style="font-size:0.8rem;margin-top:0.4rem;">
+                    <summary style="cursor:pointer;text-decoration:underline;">${t('showMore')}</summary>
+                    <div style="margin-top:0.4rem;white-space:pre-wrap;">${descEsc}</div>
+                </details>`;
         }
         html += `
             <div class="alert-item">
@@ -2037,13 +2038,11 @@ function renderAlerts(alerts) {
         });
     }
 
-    // Hide preview when details is opened (so we don't show both)
+    // Swap the toggle label as each alert's description opens/closes.
     section.querySelectorAll('details.alert-desc').forEach(d => {
+        const summary = d.querySelector('summary');
         d.addEventListener('toggle', () => {
-            const preview = d.querySelector('.alert-desc-preview');
-            const more = d.querySelector('.alert-desc-more');
-            if (preview) preview.style.display = d.open ? 'none' : '';
-            if (more) more.textContent = d.open ? ' ' + t('showLess') : ' ' + t('showMore');
+            if (summary) summary.textContent = d.open ? t('showLess') : t('showMore');
         });
     });
 }
