@@ -1256,6 +1256,14 @@ function aqiLabel(aqi) {
     return { text: t('aqiHazardous'), color: '#7f1d1d' };
 }
 
+function uvLabel(uv) {
+    if (uv <= 2) return { text: t('uvLow'), color: '#16a34a' };
+    if (uv <= 5) return { text: t('uvModerate'), color: '#ca8a04' };
+    if (uv <= 7) return { text: t('uvHigh'), color: '#ea580c' };
+    if (uv <= 10) return { text: t('uvVeryHigh'), color: '#dc2626' };
+    return { text: t('uvExtreme'), color: '#7c3aed' };
+}
+
 async function fetchNWSAlerts(lat, lon) {
     try {
         const res = await fetch(
@@ -1478,6 +1486,7 @@ function renderCurrent(current, airQuality) {
     const info = weatherInfo(current.weather_code, isNightTime());
     const section = document.getElementById('current-section');
     const uvVal = Math.round(current.uv_index);
+    const uvInfo = uvLabel(uvVal);
     const aqi = airQuality ? airQuality.us_aqi : null;
     const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
 
@@ -1521,7 +1530,7 @@ function renderCurrent(current, airQuality) {
             </div>` : ''}
             <div class="detail-item">
                 <span class="detail-label">${t('uvIndex')}</span>
-                <span class="detail-value">${uvVal} ${uvVal <= 2 ? t('uvLow') : uvVal <= 5 ? t('uvModerate') : uvVal <= 7 ? t('uvHigh') : uvVal <= 10 ? t('uvVeryHigh') : t('uvExtreme')}</span>
+                <span class="detail-value" style="color:${uvInfo.color};">${uvVal} ${uvInfo.text}</span>
             </div>
         </div>
     `;
