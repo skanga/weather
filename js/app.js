@@ -793,18 +793,6 @@ function windDirection(degrees) {
     return dirs[Math.round(degrees / 45) % 8];
 }
 
-function lonToTile(lon, zoom) {
-    return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
-}
-
-function latToTile(lat, zoom) {
-    return Math.floor(
-        (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) /
-            2 *
-            Math.pow(2, zoom)
-    );
-}
-
 function getMoonPhase(date) {
     const knownNew = new Date(2000, 0, 6, 18, 14);
     const synodicMonth = 29.53058867;
@@ -844,16 +832,16 @@ function getSettingsBool(key) {
 function tempBackground(avg, minAvg, avgRange) {
     if (!getSettingsBool('showForecastColors')) return 'transparent';
     if (avgRange < tempColorThreshold()) return 'transparent';
-    const t = (avg - minAvg) / avgRange;
+    const frac = (avg - minAvg) / avgRange;
     if (isDarkMode()) {
-        const r = Math.round(20 + t * 40);
-        const g = Math.round(50 - t * 15);
-        const b = Math.round(50 - t * 35);
+        const r = Math.round(20 + frac * 40);
+        const g = Math.round(50 - frac * 15);
+        const b = Math.round(50 - frac * 35);
         return `rgb(${r}, ${g}, ${b})`;
     }
-    const r = Math.round(214 + t * 39);
-    const g = Math.round(228 - t * 14);
-    const b = Math.round(253 - t * 39);
+    const r = Math.round(214 + frac * 39);
+    const g = Math.round(228 - frac * 14);
+    const b = Math.round(253 - frac * 39);
     return `rgb(${r}, ${g}, ${b})`;
 }
 
@@ -1190,15 +1178,24 @@ function showLocationPicker(results) {
         html += '</div>';
         container.innerHTML = html;
 
-        container.addEventListener('click', function handler(e) {
+        // Drop any handler left over from a previous picker that was never
+        // resolved (e.g. the user searched again instead of picking), so
+        // listeners don't stack up on #search-error across searches.
+        if (container._pickHandler) {
+            container.removeEventListener('click', container._pickHandler);
+        }
+        const handler = function (e) {
             const btn = e.target.closest('.location-pick');
             if (!btn) return;
             container.removeEventListener('click', handler);
+            container._pickHandler = null;
             container.hidden = true;
             container.innerHTML = '';
             container.style.color = '';
             resolve(results[parseInt(btn.dataset.idx)]);
-        });
+        };
+        container._pickHandler = handler;
+        container.addEventListener('click', handler);
     });
 }
 
@@ -1331,7 +1328,7 @@ async function fetchOpenWeatherAlerts(lat, lon) {
     }
 }
 
-async function fetchAlerts(lat, lon, country, region) {
+async function fetchAlerts(lat, lon, country) {
     if (country === 'United States') return fetchNWSAlerts(lat, lon);
     return fetchOpenWeatherAlerts(lat, lon);
 }
@@ -1364,7 +1361,7 @@ function generateSummary(current, hourly, daily) {
         : '';
 
     // --- Rain detection over the next 24 hours (preserved verbatim from original) ---
-    const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+    const startIdx = hourly.time.findIndex(ts => new Date(ts) >= now);
     let rainStartHour = null;
     let rainEndHour = null;
 
@@ -1653,8 +1650,8 @@ function renderDaily(daily, hourly) {
                     makeLabels(0, r.wind.max, 3, '', '#2563eb'))}
                 <div class="forecast-footer">
                     <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
-                    ${daily.time.map((t, i) => {
-                        const date = new Date(t + 'T00:00:00');
+                    ${daily.time.map((dayIso, i) => {
+                        const date = new Date(dayIso + 'T00:00:00');
                         const dayLabel = date.toLocaleDateString(getLocaleForDate(), { weekday: 'short' });
                         const dateLabel = date.toLocaleDateString(getLocaleForDate(), { month: 'numeric', day: 'numeric' });
                         return `<div class="forecast-footer-day" style="width:${DAY_WIDTH}px;min-width:${DAY_WIDTH}px;">${dayLabel} ${dateLabel}</div>`;
@@ -2011,7 +2008,7 @@ function renderRadar(lat, lon) {
     const section = document.getElementById('radar-section');
     // Check if location is within NWS radar coverage (US territories)
     const inNwsCoverage =
-        (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) ||  // CONUS
+        inConusBounds(lat, lon) ||                                // CONUS
         (lat >= 51 && lat <= 72 && lon >= -180 && lon <= -130) || // Alaska
         (lat >= 18 && lat <= 23 && lon >= -161 && lon <= -154) || // Hawaii
         (lat >= 17 && lat <= 19 && lon >= -68 && lon <= -64) ||   // Puerto Rico / USVI
@@ -2602,8 +2599,8 @@ function findMoonEvent(startUtcMs, lat, lon, type, maxMinutes) {
     let prevAlt = moonAltitude(startTime, lat, lon);
 
     for (let m = 10; m <= maxMinutes; m += 10) {
-        const t = new Date(startUtcMs + m * 60000);
-        const alt = moonAltitude(t, lat, lon);
+        const sampleTime = new Date(startUtcMs + m * 60000);
+        const alt = moonAltitude(sampleTime, lat, lon);
 
         if (type === 'rise' && prevAlt < -0.833 && alt >= -0.833) {
             const frac = (0 - prevAlt) / (alt - prevAlt);
@@ -2674,11 +2671,6 @@ function dateToJD(date) {
     return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + D + B - 1524.5;
 }
 
-function getDayOfYear(date) {
-    const start = new Date(date.getFullYear(), 0, 0);
-    return Math.floor((date - start) / 86400000);
-}
-
 // --- Orchestrator ------------------------------------------------------------
 
 let _lastLat = null, _lastLon = null, _lastCountry = null, _lastRegion = null;
@@ -2700,14 +2692,14 @@ let _lastPickedLocation = null; // { lat, lon, country, region }
 
 function isNightTime(date) {
     if (!_sunriseTime || !_sunsetTime) return false;
-    const t = date || new Date();
-    return t < _sunriseTime || t > _sunsetTime;
+    const when = date || new Date();
+    return when < _sunriseTime || when > _sunsetTime;
 }
 
 function isHourNight(hourStr) {
     if (!_sunriseTime || !_sunsetTime) return false;
-    const t = new Date(hourStr);
-    return t < _sunriseTime || t > _sunsetTime;
+    const when = new Date(hourStr);
+    return when < _sunriseTime || when > _sunsetTime;
 }
 
 async function fetchAllWeatherData(lat, lon, country, region) {
@@ -2767,14 +2759,13 @@ async function fetchAllWeatherData(lat, lon, country, region) {
             if (myToken !== weatherLoadToken) return;
             if (meteo && airQuality) {
                 renderCurrent(meteo.current, airQuality);
-                applySectionPreferences();
             }
             applySectionPreferences();
         });
     }).catch(() => {});
 
     // Alerts — render independently
-    fetchAlerts(lat, lon, _lastCountry, _lastRegion).then(alerts => {
+    fetchAlerts(lat, lon, _lastCountry).then(alerts => {
         if (myToken !== weatherLoadToken) return;
         _lastAlerts = alerts;
         renderAlerts(alerts);
@@ -3391,7 +3382,7 @@ if (openWeatherKeyInput) {
         else storageRemove('openWeatherApiKey');
         e.target.value = key;
         if (_lastLat !== null && _lastCountry !== 'United States') {
-            fetchAlerts(_lastLat, _lastLon, _lastCountry, _lastRegion).then(alerts => {
+            fetchAlerts(_lastLat, _lastLon, _lastCountry).then(alerts => {
                 _lastAlerts = alerts;
                 renderAlerts(alerts);
             });
