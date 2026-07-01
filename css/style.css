@@ -625,10 +625,19 @@
 
 body {
     font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
     color: var(--text);
     background: var(--bg);
     min-height: 100vh;
     transition: background 0.3s, color 0.3s;
+}
+
+/* Tabular figures for the numbers that change (temps, times, readings) so
+   columns stay aligned and values don't jitter width as they update. */
+.detail-value, .temp, .temp-high, .temp-low,
+.hourly-item, .forecast-temps, .astro-item .value {
+    font-variant-numeric: tabular-nums;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -650,7 +659,7 @@ html[data-auto-resume] #home-view { display: none; }
 /* Home View */
 .home-header {
     text-align: center;
-    padding: 20vh 0 2rem;
+    padding: 8vh 0 2rem;
 }
 
 .home-header h1 {
@@ -897,6 +906,10 @@ html[data-auto-resume] #home-view { display: none; }
     flex-direction: column;
     gap: 0.5rem;
     padding: 1rem 0;
+}
+
+#location-name {
+    letter-spacing: -0.01em;
 }
 
 .weather-toolbar {
@@ -1275,11 +1288,11 @@ section h2 {
 
 /* Weather summary */
 #weather-summary {
-    font-size: 1rem;
+    font-size: 1.05rem;
     color: var(--text);
     margin-bottom: 0.75rem;
     padding: 0 0.25rem;
-    line-height: 1.4;
+    line-height: 1.55;
 }
 
 #weather-summary:empty {
@@ -1371,33 +1384,40 @@ body.is-dragging .weather-col:empty {
 }
 
 .current-main {
-    display: flex;
-    align-items: flex-start;
+    /* Mirror the details grid below (same columns + gap) so the icon block
+       lines up with the right-hand detail column ("Dew Point"). */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
+    /* Bottom-align so "Feels like" and the condition label share a baseline,
+       even though the temp number and the weather icon differ in height. */
+    align-items: end;
 }
 
 .current-icon-block {
-    text-align: center;
+    text-align: left;
 }
 
 .current-icon-block .icon {
-    font-size: 2.5rem;
+    font-size: 3.5rem;
     line-height: 1;
 }
 
 .current-icon-block .condition {
-    font-size: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 500;
     color: var(--text-muted);
     margin-top: 0.25rem;
 }
 
 .current-temp-block .temp {
-    font-size: 2rem;
+    font-size: 3rem;
     font-weight: 700;
 }
 
 .current-temp-block .feels-like {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 500;
     color: var(--text-muted);
     margin-top: 0.15rem;
 }
@@ -1406,7 +1426,7 @@ body.is-dragging .weather-col:empty {
 .current-details-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.4rem 1.5rem;
+    gap: 0.4rem 0.75rem;
     margin-top: 0.75rem;
     font-size: 0.85rem;
 }

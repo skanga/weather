@@ -1470,13 +1470,13 @@ function renderCurrent(current, airQuality) {
     section.innerHTML = `
         <h2>${t('currentConditions')}</h2>
         <div class="current-main">
-            <div class="current-icon-block">
-                <div class="icon">${info.icon}</div>
-                <div class="condition">${info.text}</div>
-            </div>
             <div class="current-temp-block">
                 <div class="temp">${Math.round(current.temperature_2m)}${tempUnit()}</div>
                 <div class="feels-like">${t('feelsLike')} ${Math.round(current.apparent_temperature)}${tempUnit()}</div>
+            </div>
+            <div class="current-icon-block">
+                <div class="icon">${info.icon}</div>
+                <div class="condition">${info.text}</div>
             </div>
         </div>
         <div class="current-details-grid">
