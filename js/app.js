@@ -971,8 +971,6 @@ const EIRCODE_ROUTING = {
     Y25:'Gorey',Y34:'New Ross',Y35:'Wexford',
 };
 
-const ALERTS_PROXY_URL = 'https://alerts-proxy-ssdjubgioq-uc.a.run.app/';
-
 async function geocodePostal(code, countryCode, countryName) {
     // Ireland: Zippopotam doesn't support Eircodes — use routing key lookup + Open-Meteo
     if (countryCode === 'ie') {
@@ -1261,16 +1259,73 @@ async function fetchNWSAlerts(lat, lon) {
     }
 }
 
-async function fetchProxyAlerts(lat, lon, country, region) {
+function titleCase(s) {
+    return (s || '').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function dedupeAlerts(alerts, getEvent, getDesc) {
+    const seen = new Set();
+    const unique = [];
+    for (const a of alerts) {
+        const k = `${getEvent(a) || ''}|${getDesc(a) || ''}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        unique.push(a);
+    }
+    return unique;
+}
+
+function mapOpenWeatherAlerts(data, nowSec) {
+    const alerts = Array.isArray(data && data.alerts) ? data.alerts : [];
+    return dedupeAlerts(
+        alerts.filter(a => !a.end || a.end >= nowSec),
+        a => a.event,
+        a => a.description
+    ).map(a => {
+        const event = titleCase(a.event);
+        return {
+            properties: {
+                event,
+                headline: a.sender_name ? `${event} - ${a.sender_name}` : event,
+                description: a.description,
+                severity: 'Severe',
+                senderName: a.sender_name,
+                start: a.start,
+                end: a.end,
+                tags: a.tags || []
+            }
+        };
+    });
+}
+
+function buildOpenWeatherAlertsUrl(lat, lon, apiKey) {
+    const params = new URLSearchParams({
+        lat,
+        lon,
+        exclude: 'current,minutely,hourly,daily',
+        appid: apiKey
+    });
+    return `https://api.openweathermap.org/data/3.0/onecall?${params}`;
+}
+
+function missingOpenWeatherKeyAlert() {
+    return [{
+        properties: {
+            event: 'Non-US alerts unavailable',
+            headline: 'Add an OpenWeatherMap One Call 3.0 API key in Settings for non-US alerts.',
+            severity: 'Minor'
+        }
+    }];
+}
+
+async function fetchOpenWeatherAlerts(lat, lon) {
+    const apiKey = (storageGet('openWeatherApiKey') || '').trim();
+    if (!apiKey) return missingOpenWeatherKeyAlert();
     try {
-        const res = await fetch(ALERTS_PROXY_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat, lon })
-        });
+        const res = await fetch(buildOpenWeatherAlertsUrl(lat, lon, apiKey));
         if (!res.ok) return [];
         const data = await res.json();
-        return data.features || [];
+        return mapOpenWeatherAlerts(data, Math.floor(Date.now() / 1000));
     } catch {
         return [];
     }
@@ -1278,7 +1333,7 @@ async function fetchProxyAlerts(lat, lon, country, region) {
 
 async function fetchAlerts(lat, lon, country, region) {
     if (country === 'United States') return fetchNWSAlerts(lat, lon);
-    return fetchProxyAlerts(lat, lon, country, region);
+    return fetchOpenWeatherAlerts(lat, lon);
 }
 
 // --- Render Functions --------------------------------------------------------
@@ -2988,6 +3043,11 @@ function applySettings() {
     document.querySelectorAll('#settings-popover input[data-setting]').forEach(cb => {
         cb.checked = getSettingsBool(cb.dataset.setting);
     });
+
+    const owmKey = document.getElementById('setting-openweather-key');
+    if (owmKey && document.activeElement !== owmKey) {
+        owmKey.value = storageGet('openWeatherApiKey') || '';
+    }
 }
 
 // Toggle popover
@@ -3322,6 +3382,22 @@ document.getElementById('about-toggle-weather').addEventListener('click', () => 
 document.getElementById('privacy-close').addEventListener('click', () => {
     document.getElementById('privacy-panel').hidden = true;
 });
+
+const openWeatherKeyInput = document.getElementById('setting-openweather-key');
+if (openWeatherKeyInput) {
+    openWeatherKeyInput.addEventListener('change', (e) => {
+        const key = e.target.value.trim();
+        if (key) storageSet('openWeatherApiKey', key);
+        else storageRemove('openWeatherApiKey');
+        e.target.value = key;
+        if (_lastLat !== null && _lastCountry !== 'United States') {
+            fetchAlerts(_lastLat, _lastLon, _lastCountry, _lastRegion).then(alerts => {
+                _lastAlerts = alerts;
+                renderAlerts(alerts);
+            });
+        }
+    });
+}
 
 document.addEventListener('click', (e) => {
     const panel = document.getElementById('privacy-panel');

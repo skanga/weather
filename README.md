@@ -15,7 +15,7 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 - 10-day forecast with interactive charts (temperature, humidity/cloud/pressure, precipitation, wind)
 - Animated weather radar with play/pause and speed controls
 - Sunrise, sunset, solar noon, moonrise, moonset, and moon phase
-- NWS severe weather alerts (US)
+- Severe weather alerts: NWS direct for US, optional OpenWeatherMap One Call key for non-US
 - Weather summary sentence generated from forecast data
 - Dark mode (auto-detects OS preference, manual toggle)
 - Fahrenheit/Celsius and 12H/24H toggles (auto-detects from country)
@@ -31,7 +31,7 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 - **Hosting:** GitHub Pages (free)
 - **Weather data:** [Open-Meteo API](https://open-meteo.com/) (free, no API key)
 - **Radar:** [RainViewer API](https://www.rainviewer.com/api.html) (free) + [CartoDB](https://carto.com/basemaps/) map tiles
-- **Alerts:** [NWS API](https://www.weather.gov/documentation/services-web-api) (free, US only)
+- **Alerts:** [NWS API](https://www.weather.gov/documentation/services-web-api) (free, US only) + optional user-provided OpenWeatherMap One Call API key for non-US alerts
 - **Air quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (free)
 - **Postal codes:** [Zippopotam](https://api.zippopotam.us/) (free, 60+ countries)
 
@@ -54,7 +54,6 @@ css/style.css       — All styles with CSS custom properties for theming
 js/app.js           — All application logic
 js/i18n.js          — TRANSLATIONS object (15 languages)
 fonts/, img/        — Static assets
-alerts-proxy/       — Cloud Run proxy for NWS alerts
 robots.txt
 LICENSE             — MIT License
 ```
@@ -65,12 +64,12 @@ LICENSE             — MIT License
 2. Geocoding converts the search to lat/lon coordinates (Open-Meteo for cities, Zippopotam for postal codes)
 3. All weather APIs are called in parallel from the browser — no backend needed
 4. Sections render progressively as each API responds
-5. User preferences (layout, units, theme) are saved in localStorage
+5. User preferences (layout, units, theme, optional OpenWeatherMap key) are saved in localStorage
 
 ## Cost
 
 - **Hosting:** Free (GitHub Pages)
-- **APIs:** Free (Open-Meteo, RainViewer, NWS, Zippopotam)
+- **APIs:** Free (Open-Meteo, RainViewer, NWS, Zippopotam); non-US alerts require the user's own OpenWeatherMap key
 - **Total:** $0/year
 
 ## License

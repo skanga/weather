@@ -1,119 +1,62 @@
 const assert = require('assert');
 const fs = require('fs');
-const Module = require('module');
 const path = require('path');
 
-function loadProxy(relPath) {
-    const filename = path.resolve(__dirname, '..', relPath);
-    const mod = new Module(filename);
-    mod.filename = filename;
-    mod.paths = Module._nodeModulePaths(path.dirname(filename));
-    const handlers = {};
-    mod.require = (id) => {
-        if (id === '@google-cloud/functions-framework') {
-            return { http: (name, handler) => { handlers[name] = handler; } };
-        }
-        return require(id);
-    };
-    mod._compile(fs.readFileSync(filename, 'utf8'), filename);
-    mod.exports.__handlers = handlers;
-    return mod.exports;
-}
+const root = path.resolve(__dirname, '..');
+const appSrc = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
 
-const alerts = loadProxy('alerts-proxy/index.js');
-
-{
-    const req = { headers: { origin: 'https://skanga.github.io' } };
-    assert.strictEqual(alerts.getCorsOrigin(req), 'https://skanga.github.io');
-    assert.strictEqual(alerts.isAllowedRequest(req), true);
-}
-
-{
-    const nowSec = Math.floor(Date.now() / 1000);
-    const cached = {
-        data: {
-            features: [
-                { properties: { event: 'Active', end: nowSec + 60 } },
-                { properties: { event: 'Expired', end: nowSec - 60 } },
-            ],
-        },
-    };
-    assert.deepStrictEqual(alerts.activeCachedAlerts(cached), {
-        features: [{ properties: { event: 'Active', end: nowSec + 60 } }],
-    });
-}
-
-{
-    const deduped = alerts.dedupeAlerts(
-        [
-            { event: 'Flood', description: 'A', start: 1 },
-            { event: 'Flood', description: 'B', start: 2 },
-            { event: 'Flood', description: 'A', start: 3 },
-        ],
-        a => a.event,
-        a => a.description
-    );
-    assert.deepStrictEqual(deduped.map(a => a.description), ['A', 'B']);
-}
-
-{
-    const originalFetch = global.fetch;
-    const originalNow = Date.now;
-    const originalKey = process.env.OPENWEATHER_API_KEY;
-    process.env.OPENWEATHER_API_KEY = 'test-key';
-
-    let nowMs = 1_700_000_000_000;
-    Date.now = () => nowMs;
-    let fetchCalls = 0;
-    global.fetch = async () => {
-        fetchCalls++;
-        return {
-            ok: true,
-            json: async () => ({
-                alerts: [{
-                    event: 'Flood',
-                    description: 'Expired soon',
-                    sender_name: 'Test',
-                    start: Math.floor(nowMs / 1000) - 60,
-                    end: Math.floor(nowMs / 1000) + 60,
-                }],
-            }),
-        };
-    };
-
-    function makeRes() {
-        return {
-            body: undefined,
-            statusCode: 200,
-            set() {},
-            status(code) { this.statusCode = code; return this; },
-            json(body) { this.body = body; return this; },
-            send(body) { this.body = body; return this; },
-        };
+function functionSource(src, name) {
+    const start = src.indexOf(`function ${name}`);
+    assert.notStrictEqual(start, -1, `${name} should exist`);
+    const braceStart = src.indexOf('{', start);
+    let depth = 0;
+    for (let i = braceStart; i < src.length; i++) {
+        if (src[i] === '{') depth++;
+        if (src[i] === '}') depth--;
+        if (depth === 0) return src.slice(start, i + 1);
     }
+    throw new Error(`${name} function body not found`);
+}
 
-    const req = {
-        method: 'POST',
-        headers: { origin: 'https://skanga.github.io' },
-        body: { lat: 10, lon: 20 },
-    };
+{
+    const helpers = new Function(`
+        ${functionSource(appSrc, 'titleCase')}
+        ${functionSource(appSrc, 'dedupeAlerts')}
+        ${functionSource(appSrc, 'mapOpenWeatherAlerts')}
+        return { mapOpenWeatherAlerts };
+    `)();
+    const nowSec = 1_700_000_000;
 
-    const first = makeRes();
-    const second = makeRes();
+    const features = helpers.mapOpenWeatherAlerts({
+        alerts: [
+            { event: 'flood warning', description: 'Active A', sender_name: 'Agency', start: nowSec - 60, end: nowSec + 60, tags: ['Flood'] },
+            { event: 'flood warning', description: 'Active A', sender_name: 'Agency', start: nowSec - 60, end: nowSec + 60, tags: ['Flood'] },
+            { event: 'wind warning', description: 'Expired', start: nowSec - 120, end: nowSec - 60 },
+        ],
+    }, nowSec);
 
-    (async () => {
-        try {
-            await alerts.__handlers.alerts(req, first);
-            nowMs += 120_000;
-            await alerts.__handlers.alerts(req, second);
+    assert.deepStrictEqual(features, [{
+        properties: {
+            event: 'Flood Warning',
+            headline: 'Flood Warning - Agency',
+            description: 'Active A',
+            severity: 'Severe',
+            senderName: 'Agency',
+            start: nowSec - 60,
+            end: nowSec + 60,
+            tags: ['Flood'],
+        },
+    }]);
+}
 
-            assert.strictEqual(fetchCalls, 1);
-            assert.deepStrictEqual(second.body, { features: [] });
-        } finally {
-            global.fetch = originalFetch;
-            Date.now = originalNow;
-            if (originalKey === undefined) delete process.env.OPENWEATHER_API_KEY;
-            else process.env.OPENWEATHER_API_KEY = originalKey;
-        }
-    })();
+{
+    const helpers = new Function(`
+        ${functionSource(appSrc, 'buildOpenWeatherAlertsUrl')}
+        return { buildOpenWeatherAlertsUrl };
+    `)();
+    const url = helpers.buildOpenWeatherAlertsUrl(10.5, -20.25, 'key/with+chars');
+    assert.strictEqual(
+        url,
+        'https://api.openweathermap.org/data/3.0/onecall?lat=10.5&lon=-20.25&exclude=current%2Cminutely%2Chourly%2Cdaily&appid=key%2Fwith%2Bchars'
+    );
 }

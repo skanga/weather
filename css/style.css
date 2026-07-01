@@ -1068,6 +1068,21 @@ body.layout-locked .chart-min-btn {
     flex-shrink: 0;
 }
 
+#settings-popover .settings-text-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+#settings-popover input[type="password"] {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+}
+
 .alert-translate-link {
     font-size: 0.75rem;
     font-weight: 400;

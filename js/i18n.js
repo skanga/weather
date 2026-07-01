@@ -65,6 +65,7 @@ const TRANSLATIONS = {
         settingNwsLink: 'Show NWS Radar link',
         settingShowSectionButtons: 'Show "Show section" buttons when sections are hidden',
         settingTranslateLink: 'Show alert translation link',
+        settingOpenWeatherKey: 'OpenWeatherMap One Call API key for non-US alerts',
         settingAutoPlayRadar: 'Always auto-play radar',
         settingRememberCity: 'Remember last city',
 

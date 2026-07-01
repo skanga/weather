@@ -11,6 +11,7 @@ for (const snippet of [
     'data-i18n="searchAnotherCity"',
     'id="alerts-section"',
     'id="weather-summary"',
+    'id="setting-openweather-key"',
     'id="setting-auto-play-radar"',
 ]) {
     assert.ok(html.includes(snippet), snippet);
