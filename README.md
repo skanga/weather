@@ -45,6 +45,21 @@ npx http-server . -p 8080
 
 Then open `http://localhost:8080`.
 
+## Add to Your Phone Home Screen
+
+Android:
+
+1. Open `https://skanga.github.io/weather/` in Chrome.
+2. Tap the three-dot menu.
+3. Tap **Add to home screen**, then **Install**.
+
+iPhone or iPad:
+
+1. Open `https://skanga.github.io/weather/` in Safari.
+2. Tap **Share**.
+3. Tap **Add to Home Screen**.
+4. Tap **Add**.
+
 ## Project Structure
 
 ```
