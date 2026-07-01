@@ -104,14 +104,17 @@ function fmtVisibility(meters) {
 // --- Section Preferences System -----------------------------------------------
 
 const DEFAULT_SECTION_ORDER = [
-    'current-section', 'hourly-section', 'daily-section',
+    'current-section', 'wind-section', 'hourly-section', 'daily-section',
     'radar-section', 'sun-section', 'moon-section'
 ];
 
 // Default layout: ordered list with column assignments
 // 'left', 'right', or 'wide'
+// Wind sits in the right column beside Current Conditions, filling what would
+// otherwise be an empty half-row on desktop (single column on mobile).
 const DEFAULT_LAYOUT_LIST = [
     { id: 'current-section', col: 'left' },
+    { id: 'wind-section', col: 'right' },
     { id: 'hourly-section', col: 'wide' },
     { id: 'daily-section', col: 'wide' },
     { id: 'radar-section', col: 'left' },
@@ -125,6 +128,7 @@ const DEFAULT_WIDE_SECTIONS = ['daily-section', 'hourly-section'];
 function sectionName(id) {
     const keyMap = {
         'current-section': 'currentConditions',
+        'wind-section': 'wind',
         'hourly-section': 'hourlyForecast',
         'daily-section': 'tenDayForecast',
         'radar-section': 'radar',
@@ -167,6 +171,16 @@ function loadSectionPrefs() {
     prefs.chartOrder = onlyValid(prefs.chartOrder, VALID_CHART_IDS);
     prefs.hiddenCharts = onlyValid(prefs.hiddenCharts || [], VALID_CHART_IDS);
     if (!prefs.layoutList) prefs.layoutList = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_LIST));
+    // Reconcile a stored layout with the current section set: drop unknown ids,
+    // then insert any section missing from the stored list (e.g. one added in a
+    // newer version, like wind) at its default position so existing users who
+    // customized their layout still get it placed sensibly instead of orphaned.
+    prefs.layoutList = prefs.layoutList.filter(it => it && VALID_SECTION_IDS.has(it.id));
+    DEFAULT_LAYOUT_LIST.forEach((def, idx) => {
+        if (!prefs.layoutList.some(it => it.id === def.id)) {
+            prefs.layoutList.splice(Math.min(idx, prefs.layoutList.length), 0, { id: def.id, col: def.col });
+        }
+    });
     return prefs;
 }
 
@@ -1513,10 +1527,45 @@ function renderCurrent(current, airQuality) {
     `;
 }
 
+// Wind compass — the arrow flies with the wind (points downwind, the way the
+// wind is blowing), which is 180° from the direction it comes from. So wind
+// "From S" points the arrow north. windDirection() gives the source cardinal
+// for the readout, matching the "Wind … S" line in Current Conditions.
+function renderWind(current) {
+    const section = document.getElementById('wind-section');
+    if (!section) return;
+    const deg = current.wind_direction_10m;
+    const rot = Number.isFinite(deg) ? (deg + 180) % 360 : 0;
+    const speed = Math.round(current.wind_speed_10m);
+    const gust = Math.round(current.wind_gusts_10m);
+    const card = windDirection(deg);
+    section.innerHTML = `
+        <h2>${t('wind')}</h2>
+        <div class="wind-compass">
+            <svg viewBox="0 0 100 100" class="wind-dial" aria-hidden="true">
+                <circle cx="50" cy="50" r="46" class="wind-ring"/>
+                <text x="50" y="17" class="wind-card-label">N</text>
+                <text x="83" y="50" class="wind-card-label">E</text>
+                <text x="50" y="83" class="wind-card-label">S</text>
+                <text x="17" y="50" class="wind-card-label">W</text>
+                <g transform="rotate(${rot} 50 50)">
+                    <line x1="50" y1="66" x2="50" y2="40" class="wind-arrow-shaft"/>
+                    <polygon points="50,26 44,41 56,41" class="wind-arrow-head"/>
+                </g>
+            </svg>
+            <div class="wind-readout">
+                <div class="wind-speed-big">${speed}<span class="wind-unit">${windUnit()}</span></div>
+                <div class="wind-from">${t('windFrom', { dir: card })}</div>
+                <div class="wind-gusts">${t('gusts')} ${gust} ${windUnit()}</div>
+            </div>
+        </div>
+    `;
+}
+
 function renderHourly(hourly) {
     const section = document.getElementById('hourly-section');
     const now = new Date();
-    const startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+    const startIdx = hourly.time.findIndex(ts => new Date(ts) >= now);
     if (startIdx === -1) { section.innerHTML = ''; return; }
 
     let html = `<h2>${t('hourlyForecast')}</h2><div class="hourly-scroll">`;
@@ -2722,6 +2771,7 @@ async function fetchAllWeatherData(lat, lon, country, region) {
     document.getElementById('alerts-section').hidden = true;
     document.getElementById('weather-summary').textContent = '';
     document.getElementById('current-section').innerHTML = `<div class="loading">${t('loading')}</div>`;
+    document.getElementById('wind-section').innerHTML = '';
     document.getElementById('hourly-section').innerHTML = '';
     document.getElementById('daily-section').innerHTML = '';
     document.getElementById('radar-section').innerHTML = `<h2>${t('radar')}</h2><div class="loading">${t('loading')}</div>`;
@@ -2739,6 +2789,7 @@ async function fetchAllWeatherData(lat, lon, country, region) {
         _sunsetTime = new Date(meteo.daily.sunset[0]);
         renderWeatherSummary(meteo.current, meteo.hourly, meteo.daily);
         renderCurrent(meteo.current, null); // AQI added later when it arrives
+        renderWind(meteo.current);
         renderHourly(meteo.hourly);
         renderDaily(meteo.daily, meteo.hourly);
         renderSunMoon(meteo.daily, lat, lon, meteo.utc_offset_seconds);
@@ -2793,6 +2844,7 @@ function rerenderWeatherFromCache() {
 
     renderWeatherSummary(meteo.current, meteo.hourly, meteo.daily);
     renderCurrent(meteo.current, airQuality);
+    renderWind(meteo.current);
     renderHourly(meteo.hourly);
     renderDaily(meteo.daily, meteo.hourly);
     renderSunMoon(meteo.daily, lat, lon, meteo.utc_offset_seconds);

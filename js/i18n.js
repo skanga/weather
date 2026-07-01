@@ -39,6 +39,7 @@ const TRANSLATIONS = {
         humidity: 'Humidity',
         dewPoint: 'Dew Point',
         wind: 'Wind',
+        windFrom: 'From {dir}',
         gusts: 'Gusts',
         airQuality: 'Air Quality',
         uvIndex: 'UV Index',
