@@ -6,7 +6,7 @@ A fast, ad-free, privacy-respecting weather website. No tracking, no cookies, no
 
 ## Why?
 
-Weather websites are some of the most bloated pages on the internet. A typical weather page loads 6-12MB of JavaScript, tracking scripts, and ads just to show you the temperature. This app loads its core page under 350KB — that's 10-20x lighter.
+Weather websites are some of the most bloated pages on the internet. A typical weather page loads 6-12MB of JavaScript, tracking scripts, and ads just to show you the temperature. This app loads its core page under 350KB - that's 10-20x lighter.
 
 ## Features
 
@@ -19,7 +19,7 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 - Weather summary sentence generated from forecast data
 - Dark mode (auto-detects OS preference, manual toggle)
 - Fahrenheit/Celsius and 12H/24H toggles (auto-detects from country)
-- Optional layout customization — reorder, resize, minimize, or hide sections
+- Optional layout customization - reorder, resize, minimize, or hide sections
 - Bookmarkable URLs with direct lat/lon for instant loading
 - Installable as a PWA (Progressive Web App)
 - International postal code support (60+ countries)
@@ -27,7 +27,7 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 
 ## Tech Stack
 
-- **Frontend:** Plain HTML, CSS, vanilla JavaScript — no frameworks, no bundler, no npm dependencies at runtime
+- **Frontend:** Plain HTML, CSS, vanilla JavaScript - no frameworks, no bundler, no npm dependencies at runtime
 - **Hosting:** GitHub Pages (free)
 - **Weather data:** [Open-Meteo API](https://open-meteo.com/) (free, no API key)
 - **Radar:** [RainViewer API](https://www.rainviewer.com/api.html) (free) + [CartoDB](https://carto.com/basemaps/) map tiles + NoAdsRadar Cloud Run future-cast tiles for the contiguous US
@@ -63,15 +63,15 @@ iPhone or iPad:
 ## Project Structure
 
 ```
-index.html          — Single-page app entry
-404.html            — Redirects legacy URLs into app deep links
-css/style.css       — All styles with CSS custom properties for theming
-js/app.js           — All application logic
-js/i18n.js          — TRANSLATIONS object (15 languages)
-tests/              — Unit tests
-fonts/, img/        — Static assets
-robots.txt
-LICENSE             — MIT License
+index.html          - Single-page app entry
+404.html            - Redirects legacy URLs into app deep links
+css/style.css       - All styles with CSS custom properties for theming
+js/app.js           - All application logic
+js/i18n.js          - Translations into 15 languages
+tests/              - Unit tests
+fonts/, img/        - Static assets
+robots.txt          - Rules for crawlers
+LICENSE             - MIT License
 ```
 
 ## How It Works
@@ -90,4 +90,4 @@ LICENSE             — MIT License
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see [LICENSE](LICENSE)
