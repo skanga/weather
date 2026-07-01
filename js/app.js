@@ -807,6 +807,13 @@ function windDirection(degrees) {
     return dirs[Math.round(degrees / 45) % 8];
 }
 
+// Full-form cardinal, used only in the wind widget readout (which has room);
+// the compass dial and the compact Current Conditions line keep abbreviations.
+function windDirectionLong(degrees) {
+    const dirs = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
+    return dirs[Math.round(degrees / 45) % 8];
+}
+
 function getMoonPhase(date) {
     const knownNew = new Date(2000, 0, 6, 18, 14);
     const synodicMonth = 29.53058867;
@@ -1557,7 +1564,7 @@ function renderWind(current) {
     const rot = Number.isFinite(deg) ? (deg + 180) % 360 : 0;
     const speed = Math.round(current.wind_speed_10m);
     const gust = Math.round(current.wind_gusts_10m);
-    const card = windDirection(deg);
+    const card = windDirectionLong(deg);
     section.innerHTML = `
         <h2>${t('wind')}</h2>
         <div class="wind-compass">

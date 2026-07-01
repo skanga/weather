@@ -36,17 +36,14 @@ const out = new Function(`
         return s;
     }
     function windUnit() { return 'mph'; }
-    function windDirection(degrees) {
-        const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-        return dirs[Math.round(degrees / 45) % 8];
-    }
+    ${functionSource(appSrc, 'windDirectionLong')}
     ${functionSource(appSrc, 'renderWind')}
     renderWind({ wind_direction_10m: 90, wind_speed_10m: 9.4, wind_gusts_10m: 13.6 });
     return section.innerHTML;
 `)();
 
 assert.ok(out.includes('rotate(270'), 'arrow points downwind (180deg from the source bearing)');
-assert.ok(out.includes('From E'), '90deg source maps to cardinal E');
+assert.ok(out.includes('From East'), '90deg source maps to full-form East in the readout');
 assert.ok(/>9<|9<span/.test(out), 'speed rounds to 9');
 assert.ok(out.includes('Gusts 14'), 'gusts round to 14');
 
@@ -72,3 +69,21 @@ const prefs = new Function(`
 const ids = prefs.layoutList.map(x => x.id);
 assert.ok(ids.includes('wind-section'), 'legacy layout gains wind-section');
 assert.strictEqual(ids[1], 'wind-section', 'wind inserted right after current');
+
+// Full-form directions only in the wind widget readout; abbreviations stay
+// on the compact Current Conditions line and the compass dial.
+const longDir = new Function(`
+    ${functionSource(appSrc, 'windDirectionLong')}
+    return windDirectionLong;
+`)();
+assert.strictEqual(longDir(0), 'North', '0deg -> North');
+assert.strictEqual(longDir(90), 'East', '90deg -> East');
+assert.strictEqual(longDir(225), 'Southwest', '225deg -> Southwest');
+assert.strictEqual(longDir(315), 'Northwest', '315deg -> Northwest');
+
+const renderWindSrc = functionSource(appSrc, 'renderWind');
+assert.match(renderWindSrc, /windDirectionLong\(/, 'wind widget uses full-form directions');
+
+const renderCurrentSrc = functionSource(appSrc, 'renderCurrent');
+assert.match(renderCurrentSrc, /windDirection\(current\.wind_direction_10m\)/, 'Current Conditions keeps abbreviations');
+assert.doesNotMatch(renderCurrentSrc, /windDirectionLong/, 'Current Conditions does not use full form');
