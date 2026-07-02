@@ -3036,6 +3036,7 @@ function showHome() {
     document.documentElement.removeAttribute('data-auto-resume');
     weatherView.hidden = true;
     homeView.hidden = false;
+    document.title = 'Weather';
     searchInput.value = '';
     searchError.hidden = true;
     renderRecentLocations();
@@ -3058,6 +3059,7 @@ function showWeather(location, query) {
         label += ` (${trimmedQuery})`;
     }
     locationName.textContent = label;
+    document.title = `${label} Weather`;
 }
 
 // Set by loadFromURL before firing a synthetic submit so a ?q= URL auto-picks

@@ -20,15 +20,25 @@ function functionSource(name) {
 const helpers = new Function(`
 const homeView = {};
 const weatherView = {};
+const searchInput = { value: 'San Jose' };
+const searchError = { hidden: false };
+const document = { title: 'Weather', documentElement: { removeAttribute() {} } };
 const locationName = { textContent: '' };
 const STATE_ABBRS = { ca: 'california' };
+function renderRecentLocations() {}
+${functionSource('showHome')}
 ${functionSource('showWeather')}
-return { showWeather, locationName };
+return { showHome, showWeather, document, locationName };
 `)();
 
 helpers.showWeather({ name: 'San Jose', region: 'California', country: 'United States' }, 'San Jose');
 assert.strictEqual(helpers.locationName.textContent, 'San Jose, CA');
+assert.strictEqual(helpers.document.title, 'San Jose, CA Weather');
 
 helpers.showWeather({ name: 'San Diego', region: 'CA', country: 'United States' }, '92101');
 assert.strictEqual(helpers.locationName.textContent, 'San Diego, CA (92101)');
+assert.strictEqual(helpers.document.title, 'San Diego, CA (92101) Weather');
+
+helpers.showHome();
+assert.strictEqual(helpers.document.title, 'Weather');
 
