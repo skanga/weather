@@ -28,7 +28,7 @@ const TRANSLATIONS = {
         useMyLocation: 'Use current location',
         locationUnavailable: 'Location unavailable.',
         back: '← Back',
-        searchAnotherCity: '← Search',
+        searchAnotherCity: 'Search',
         privacyCookies: 'Privacy',
         about: 'About',
         showMore: 'Show more',
