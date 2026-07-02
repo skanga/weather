@@ -25,6 +25,8 @@ const TRANSLATIONS = {
         translateAlert: 'Translate',
         searchPlaceholder: 'Enter city or zip code',
         searchButton: 'Search',
+        useMyLocation: 'Use my location',
+        locationUnavailable: 'Location unavailable.',
         back: '← Back',
         searchAnotherCity: '← Search',
         privacyCookies: 'Privacy',

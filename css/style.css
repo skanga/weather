@@ -716,6 +716,16 @@ html[data-auto-resume] #home-view { display: none; }
     background: var(--accent-hover);
 }
 
+#search-form .secondary-search-btn {
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+#search-form .secondary-search-btn:hover {
+    background: var(--btn-hover-bg);
+}
+
 .error {
     color: #dc2626;
     margin-top: 0.5rem;

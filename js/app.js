@@ -738,6 +738,7 @@ const homeView = document.getElementById('home-view');
 const weatherView = document.getElementById('weather-view');
 const searchForm = document.getElementById('search-form');
 const searchInput = document.getElementById('search-input');
+const currentLocationBtn = document.getElementById('current-location-btn');
 const searchError = document.getElementById('search-error');
 const recentLocationsEl = document.getElementById('recent-locations');
 const locationName = document.getElementById('location-name');
@@ -3092,6 +3093,73 @@ searchForm.addEventListener('submit', async (e) => {
         searchForm.querySelector('button').textContent = t('searchButton');
     }
 });
+
+async function resolveCurrentLocation(lat, lon) {
+    const fallback = { name: 'Current Location', region: '', country: '', lat, lon };
+    try {
+        const res = await fetchWithTimeout(
+            `https://api.weather.gov/points/${lat},${lon}`,
+            { headers: { 'User-Agent': 'Weather (https://skanga.github.io/weather/)' } },
+            5000
+        );
+        if (!res.ok) return fallback;
+        const data = await res.json();
+        const rel = data.properties?.relativeLocation?.properties || {};
+        return {
+            name: rel.city || fallback.name,
+            region: rel.state || '',
+            country: 'United States',
+            lat,
+            lon,
+        };
+    } catch {
+        return fallback;
+    }
+}
+
+function useCurrentLocation(nav = navigator) {
+    if (!nav.geolocation) {
+        searchError.textContent = t('locationUnavailable');
+        searchError.hidden = false;
+        return;
+    }
+
+    searchError.hidden = true;
+    currentLocationBtn.disabled = true;
+    currentLocationBtn.textContent = t('searching');
+
+    nav.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
+            lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            searchError.textContent = t('locationUnavailable');
+            searchError.hidden = false;
+            currentLocationBtn.disabled = false;
+            currentLocationBtn.textContent = t('useMyLocation');
+            return;
+        }
+
+        const query = 'Current Location';
+        const location = await resolveCurrentLocation(lat, lon);
+        setUnitsForCountry(location.country);
+        updateURL(query, location);
+        showWeather(location, query);
+        fetchAllWeatherData(lat, lon, location.country, location.region);
+        saveLastLocation(query, location);
+        currentLocationBtn.disabled = false;
+        currentLocationBtn.textContent = t('useMyLocation');
+    }, () => {
+        searchError.textContent = t('locationUnavailable');
+        searchError.hidden = false;
+        currentLocationBtn.disabled = false;
+        currentLocationBtn.textContent = t('useMyLocation');
+    }, { timeout: 10000, maximumAge: 600000 });
+}
+
+if (currentLocationBtn) {
+    currentLocationBtn.addEventListener('click', () => useCurrentLocation());
+}
 
 backBtn.addEventListener('click', () => {
     showHome();
