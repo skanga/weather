@@ -905,7 +905,7 @@ html[data-auto-resume] #home-view { display: none; }
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding: 1rem 0;
+    padding: 0 0 1rem 0;
 }
 
 #location-name {
