@@ -23,7 +23,23 @@ Weather websites are some of the most bloated pages on the internet. A typical w
 - Bookmarkable URLs with direct lat/lon for instant loading
 - Installable as a PWA (Progressive Web App)
 - International postal code support (60+ countries)
+- Current-location lookup via browser GPS permission
 - Zero cookies, zero tracking, zero analytics
+
+## Add to Your Phone Home Screen
+
+Android:
+
+1. Open `https://skanga.github.io/weather/` in Chrome.
+2. Tap the three-dot menu.
+3. Tap **Add to home screen**, then **Install**.
+
+iPhone or iPad:
+
+1. Open `https://skanga.github.io/weather/` in Safari.
+2. Tap **Share**.
+3. Tap **Add to Home Screen**.
+4. Tap **Add**.
 
 ## Tech Stack
 
@@ -45,21 +61,6 @@ npx http-server . -p 8080
 
 Then open `http://localhost:8080`.
 
-## Add to Your Phone Home Screen
-
-Android:
-
-1. Open `https://skanga.github.io/weather/` in Chrome.
-2. Tap the three-dot menu.
-3. Tap **Add to home screen**, then **Install**.
-
-iPhone or iPad:
-
-1. Open `https://skanga.github.io/weather/` in Safari.
-2. Tap **Share**.
-3. Tap **Add to Home Screen**.
-4. Tap **Add**.
-
 ## Project Structure
 
 ```
@@ -76,11 +77,17 @@ LICENSE             - MIT License
 
 ## How It Works
 
-1. User searches a city name or postal code
-2. Geocoding converts the search to lat/lon coordinates (Open-Meteo for cities, Zippopotam for postal codes)
+1. User searches a city/postal code or clicks **Use my location**
+2. Geocoding converts searches to lat/lon coordinates (Open-Meteo for cities, Zippopotam for postal codes); GPS uses the browser Geolocation API directly
 3. All weather APIs are called in parallel from the browser to remote backends & cloud services
 4. Sections render progressively as each API responds
 5. User preferences (layout, units, theme, optional OpenWeatherMap key) are saved in localStorage
+
+GPS notes:
+
+- Forecasts work worldwide because Open-Meteo accepts raw GPS coordinates.
+- US GPS locations are checked against `api.weather.gov/points` for city/state, imperial defaults, and NWS alerts.
+- Non-US GPS locations may show as "Current Location" if no city/country is known. Non-US severe alerts require the user's own OpenWeatherMap One Call API key in Settings; without it, the app shows a non-US alerts unavailable message.
 
 ## Cost
 
