@@ -1265,16 +1265,16 @@ async function fetchAirQuality(lat, lon) {
 }
 
 // us_aqi is the max of its six sub-indices, so the one driving it is the
-// "dominant pollutant". Symbols (PM2.5, O₃, ...) are universal, no i18n needed.
+// "dominant pollutant". Maps each sub-index to its i18n key (friendly name).
 // ponytail: argmax over sub-indices, not exact-equality match to us_aqi, so
 // rounding never leaves us with no match.
 const AQI_POLLUTANTS = {
-    us_aqi_pm2_5: 'PM2.5',
-    us_aqi_pm10: 'PM10',
-    us_aqi_ozone: 'O₃',
-    us_aqi_nitrogen_dioxide: 'NO₂',
-    us_aqi_sulphur_dioxide: 'SO₂',
-    us_aqi_carbon_monoxide: 'CO',
+    us_aqi_pm2_5: 'pollutantPm25',
+    us_aqi_pm10: 'pollutantPm10',
+    us_aqi_ozone: 'pollutantOzone',
+    us_aqi_nitrogen_dioxide: 'pollutantNo2',
+    us_aqi_sulphur_dioxide: 'pollutantSo2',
+    us_aqi_carbon_monoxide: 'pollutantCo',
 };
 
 function dominantPollutant(airQuality) {
@@ -1586,7 +1586,7 @@ function renderCurrent(current, airQuality) {
             ${dom ? `
             <div class="detail-item">
                 <span class="detail-label">${t('mainPollutant')}</span>
-                <span class="detail-value">${dom}</span>
+                <span class="detail-value">${t(dom)}</span>
             </div>` : ''}
         </div>
     `;
