@@ -68,12 +68,12 @@ let urlArgs;
 let showArgs;
 let fetchArgs;
 let saveArgs;
-const currentLocationBtn = { disabled: false, textContent: 'Use my location' };
+const currentLocationBtn = { disabled: false, textContent: 'Use current location' };
 const searchError = { hidden: false, textContent: 'old error' };
 function t(key) {
     return {
         searching: 'Searching...',
-        useMyLocation: 'Use my location',
+        useMyLocation: 'Use current location',
         locationUnavailable: 'Location unavailable.'
     }[key] || key;
 }
@@ -111,7 +111,7 @@ return {
     await success({ coords: { latitude: 37.7749, longitude: -122.4194 } });
 
     assert.strictEqual(helpers.currentLocationBtn.disabled, false);
-    assert.strictEqual(helpers.currentLocationBtn.textContent, 'Use my location');
+    assert.strictEqual(helpers.currentLocationBtn.textContent, 'Use current location');
     assert.strictEqual(helpers.calls.unitsCountry, 'United States');
     assert.deepStrictEqual(helpers.calls.fetchArgs, [37.7749, -122.4194, 'United States', 'CA']);
     assert.strictEqual(helpers.calls.urlArgs[0], 'Current Location');

@@ -77,7 +77,7 @@ LICENSE             - MIT License
 
 ## How It Works
 
-1. User searches a city/postal code or clicks **Use my location**
+1. User searches a city/postal code or clicks **Use current location**
 2. Geocoding converts searches to lat/lon coordinates (Open-Meteo for cities, Zippopotam for postal codes); GPS uses the browser Geolocation API directly
 3. All weather APIs are called in parallel from the browser to remote backends & cloud services
 4. Sections render progressively as each API responds

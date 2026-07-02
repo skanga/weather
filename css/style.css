@@ -682,6 +682,7 @@ html[data-auto-resume] #home-view { display: none; }
 
 #search-form {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
 }
 
@@ -717,6 +718,7 @@ html[data-auto-resume] #home-view { display: none; }
 }
 
 #search-form .secondary-search-btn {
+    flex-basis: 100%;
     background: var(--card-bg);
     color: var(--text);
     border: 1px solid var(--border);
