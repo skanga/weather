@@ -315,6 +315,10 @@ function injectSectionControls() {
             <button class="section-min-btn" title="${isMin ? t('removeSection') : t('minimizeSection')}">${isMin ? '✕' : '−'}</button>
         `;
         el.prepend(controls);
+        controls.querySelector('.section-move-up').setAttribute('aria-label', t('moveUp'));
+        controls.querySelector('.section-move-down').setAttribute('aria-label', t('moveDown'));
+        controls.querySelector('.section-width-btn').setAttribute('aria-label', isWide ? t('singleColumn') : t('fullWidth'));
+        controls.querySelector('.section-min-btn').setAttribute('aria-label', isMin ? t('removeSection') : t('minimizeSection'));
 
         // Mobile move up/down — swap in layoutList and re-render
         // On mobile, flatten all items to 'wide' so they stack cleanly in single column
@@ -367,8 +371,10 @@ function injectSectionControls() {
                 el.classList.add('section-minimized');
                 if (!p.minimized.includes(id)) p.minimized.push(id);
                 saveSectionPrefs(p);
-                controls.querySelector('.section-min-btn').textContent = '✕';
-                controls.querySelector('.section-min-btn').title = t('removeSection');
+                const minBtn = controls.querySelector('.section-min-btn');
+                minBtn.textContent = '✕';
+                minBtn.title = t('removeSection');
+                minBtn.setAttribute('aria-label', t('removeSection'));
             }
         });
 
@@ -383,7 +389,11 @@ function injectSectionControls() {
                 p.minimized = p.minimized.filter(x => x !== id);
                 saveSectionPrefs(p);
                 const btn = el.querySelector('.section-min-btn');
-                if (btn) { btn.textContent = '−'; btn.title = t('minimizeSection'); }
+                if (btn) {
+                    btn.textContent = '−';
+                    btn.title = t('minimizeSection');
+                    btn.setAttribute('aria-label', t('minimizeSection'));
+                }
             });
         }
     }
@@ -555,6 +565,7 @@ function applyChartOrder(chartOrder) {
 
         // Add click handlers for chart hide buttons
         scroll.querySelectorAll('.chart-min-btn').forEach(btn => {
+            btn.setAttribute('aria-label', t('hideChart'));
             btn.onclick = () => {
                 const chartId = btn.dataset.chartId;
                 const p = loadSectionPrefs();
@@ -882,7 +893,7 @@ function updateDayBackgrounds() {
 
 async function geocodeFetch(name) {
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=10&language=en&format=json`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) throw new Error('Geocoding request failed');
     return res.json();
 }
@@ -1020,7 +1031,7 @@ async function geocodePostal(code, countryCode, countryName) {
         lookupCode = lookupCode.toUpperCase();
     }
 
-    const res = await fetch(`https://api.zippopotam.us/${countryCode}/${encodeURIComponent(lookupCode)}`);
+    const res = await fetchWithTimeout(`https://api.zippopotam.us/${countryCode}/${encodeURIComponent(lookupCode)}`);
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.places || data.places.length === 0) return null;
@@ -2165,6 +2176,10 @@ function renderRadar(lat, lon) {
             </div>
         </div>
     `;
+    document.getElementById('radar-refresh').setAttribute('aria-label', t('refreshRadar'));
+    document.getElementById('radar-pause').setAttribute('aria-label', t('pauseRadar'));
+    document.getElementById('radar-slower').setAttribute('aria-label', t('slowerRadar'));
+    document.getElementById('radar-faster').setAttribute('aria-label', t('fasterRadar'));
     loadRadar(lat, lon);
 
     document.getElementById('radar-refresh').addEventListener('click', () => {
@@ -3282,7 +3297,13 @@ function getLocationFromURL() {
     }
     // Fallback to just query string
     if (params.get('q')) return { query: params.get('q'), location: null };
-    if (window.location.hash.length > 1) return { query: decodeURIComponent(window.location.hash.slice(1)), location: null };
+    if (window.location.hash.length > 1) {
+        try {
+            return { query: decodeURIComponent(window.location.hash.slice(1)), location: null };
+        } catch {
+            return null;
+        }
+    }
     return null;
 }
 

@@ -5,6 +5,8 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
 const i18nSrc = fs.readFileSync(path.join(root, 'js/i18n.js'), 'utf8');
+const cssSrc = fs.readFileSync(path.join(root, 'css/style.css'), 'utf8');
+const contributingSrc = fs.readFileSync(path.join(root, 'CONTRIBUTING.md'), 'utf8');
 
 function functionSource(src, name) {
     const start = src.indexOf(`function ${name}`);
@@ -49,4 +51,26 @@ function functionSource(src, name) {
     assert.strictEqual(helpers.getCurrentStyle(), 'default');
     assert.strictEqual(helpers.getSettingsBool('showForecastColors'), true);
     assert.strictEqual(helpers.getSettingsBool('autoPlayRadar'), false);
+}
+
+{
+    const helpers = new Function('search', 'hash', `
+        const window = { location: { search, hash } };
+        ${functionSource(appSrc, 'getLocationFromURL')}
+        return { getLocationFromURL };
+    `)('', '#%');
+    assert.doesNotThrow(() => helpers.getLocationFromURL());
+    assert.strictEqual(helpers.getLocationFromURL(), null);
+}
+
+{
+    assert.match(functionSource(appSrc, 'injectSectionControls'), /setAttribute\('aria-label', t\('moveUp'\)\)/);
+    assert.match(functionSource(appSrc, 'applyChartOrder'), /setAttribute\('aria-label', t\('hideChart'\)\)/);
+    assert.match(functionSource(appSrc, 'renderRadar'), /setAttribute\('aria-label', t\('refreshRadar'\)\)/);
+    assert.doesNotMatch(cssSrc, /Mobile-only move buttons/);
+}
+
+{
+    assert.doesNotMatch(contributingSrc, /There's no test suite \(yet\)/);
+    assert.match(contributingSrc, /Get-ChildItem tests\\\*\.test\.js/);
 }

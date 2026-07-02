@@ -22,6 +22,8 @@ function functionSource(src, name) {
 // infinite "loading" spinner.
 const fetchOpenMeteoSrc = functionSource(appSrc, 'fetchOpenMeteo');
 assert.match(fetchOpenMeteoSrc, /fetchWithTimeout\(/, 'fetchOpenMeteo uses fetchWithTimeout');
+assert.match(functionSource(appSrc, 'geocodeFetch'), /fetchWithTimeout\(/, 'geocodeFetch uses fetchWithTimeout');
+assert.match(functionSource(appSrc, 'geocodePostal'), /fetchWithTimeout\(/, 'geocodePostal uses fetchWithTimeout');
 
 // Behavior: a response that never arrives is aborted and the promise rejects.
 (async () => {

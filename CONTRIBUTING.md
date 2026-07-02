@@ -47,7 +47,13 @@ Thanks for your interest in contributing! This project is intentionally simple â
 
 ## Testing
 
-There's no test suite (yet). Test manually:
+Run the assertion scripts:
+
+```powershell
+$failed = 0; Get-ChildItem tests\*.test.js | ForEach-Object { node $_.FullName; if ($LASTEXITCODE -ne 0) { $failed = 1 } }; exit $failed
+```
+
+Also test manually:
 - Search a US city and zip code
 - Search an international city and postal code
 - Toggle dark mode

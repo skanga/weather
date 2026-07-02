@@ -1128,11 +1128,6 @@ body.layout-locked .chart-min-btn {
     color: var(--text);
 }
 
-/* Mobile-only move buttons — hidden on desktop */
-.mobile-only {
-    display: none;
-}
-
 .section-min-btn:hover {
     color: var(--text);
 }
