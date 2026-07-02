@@ -1037,7 +1037,7 @@ async function geocodePostal(code, countryCode, countryName) {
     };
 }
 
-async function geocodeZipInner(code) {
+async function geocodeZipInner(code, autoPick = false) {
     const trimmed = code.trim();
 
     // Find all matching country patterns for this postal code
@@ -1064,11 +1064,12 @@ async function geocodeZipInner(code) {
     if (validResults.length === 0) return null;
     if (validResults.length === 1) return validResults[0];
 
-    // Multiple valid results — show picker
+    // Multiple valid results — show picker, or auto-resolve for shareable ?q= URLs
+    if (autoPick) return validResults[0];
     return showLocationPicker(validResults);
 }
 
-async function geocodeZip(query) {
+async function geocodeZip(query, autoPick = false) {
     const trimmed = query.trim();
 
     // Check if user prefixed with country code, e.g. "DE 10115" or "UK SW1A 1AA"
@@ -1082,16 +1083,16 @@ async function geocodeZip(query) {
             if (result) return result;
         }
         // Prefix might be a province/state code (e.g. "QC H4N 2E7") — try the rest as a postal code
-        const restResult = await geocodeZipInner(code);
+        const restResult = await geocodeZipInner(code, autoPick);
         if (restResult) return restResult;
     }
 
-    return await geocodeZipInner(trimmed);
+    return await geocodeZipInner(trimmed, autoPick);
 }
 
 async function geocode(query, autoPick = false) {
     // Check if input looks like a postal code
-    const postal = await geocodeZip(query);
+    const postal = await geocodeZip(query, autoPick);
     if (postal) return postal;
 
     // Parse city and region filter from input
@@ -1251,16 +1252,20 @@ async function fetchOpenMeteo(lat, lon) {
 }
 
 async function fetchAirQuality(lat, lon) {
+    // Try the full sub-index list (for the dominant-pollutant row); if that
+    // request is rejected, fall back to us_aqi alone so the AQI row still shows.
+    const fields = [
+        'us_aqi,us_aqi_pm2_5,us_aqi_pm10,us_aqi_ozone,' +
+            'us_aqi_nitrogen_dioxide,us_aqi_sulphur_dioxide,us_aqi_carbon_monoxide',
+        'us_aqi',
+    ];
     try {
-        const params = new URLSearchParams({
-            latitude: lat,
-            longitude: lon,
-            current: 'us_aqi,us_aqi_pm2_5,us_aqi_pm10,us_aqi_ozone,' +
-                'us_aqi_nitrogen_dioxide,us_aqi_sulphur_dioxide,us_aqi_carbon_monoxide',
-        });
-        const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
-        if (!res.ok) return null;
-        return (await res.json()).current;
+        for (const current of fields) {
+            const params = new URLSearchParams({ latitude: lat, longitude: lon, current });
+            const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
+            if (res.ok) return (await res.json()).current;
+        }
+        return null;
     } catch {
         return null;
     }
@@ -1540,7 +1545,7 @@ function renderCurrent(current, airQuality) {
     const uvVal = Math.round(current.uv_index);
     const uvInfo = uvLabel(uvVal);
     const aqi = airQuality ? airQuality.us_aqi : null;
-    const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
+    const aqiInfo = aqi != null ? aqiLabel(aqi) : null;
     const dom = dominantPollutant(airQuality);
 
     section.innerHTML = `
@@ -2036,7 +2041,7 @@ function renderAlerts(alerts) {
     // preserve whatever open/closed state the user chose across re-renders.
     const freshlyShown = section.hidden;
     section.hidden = false;
-    const wasCollapsed = freshlyShown ? true : section.classList.contains('alerts-collapsed');
+    const wasCollapsed = freshlyShown || section.classList.contains('alerts-collapsed');
     let html = `
         <div class="alerts-header">
             <h2>${t('weatherAlerts')}</h2>
@@ -2927,6 +2932,8 @@ function makeRecentLocation(query, location) {
     };
 }
 
+const RECENT_LOCATIONS_CAP = 12;
+
 function recentLocationKey(item) {
     const lat = item && item.location ? parseFloat(item.location.lat) : NaN;
     const lon = item && item.location ? parseFloat(item.location.lon) : NaN;
@@ -2934,9 +2941,9 @@ function recentLocationKey(item) {
     return `${lat.toFixed(4)},${lon.toFixed(4)}`;
 }
 
-// ponytail: static seed shown until the user has real history; not persisted,
-// so the first real search replaces it (renderRecentLocations falls back here
-// only when storage is empty).
+// ponytail: static seeds that pad the recents list up to the cap; not
+// persisted. Real history is shown first, and each real search pushes one seed
+// off the end (see displayedRecentLocations) rather than clearing them all.
 const POPULAR_LOCATIONS = [
     { name: 'San Francisco', region: 'California', country: 'United States', lat: 37.7749, lon: -122.4194 },
     { name: 'Los Angeles', region: 'California', country: 'United States', lat: 34.0522, lon: -118.2437 },
@@ -2959,14 +2966,14 @@ function displayedRecentLocations() {
     const recent = loadRecentLocations();
     const keys = new Set(recent.map(recentLocationKey));
     const fill = POPULAR_LOCATIONS.filter(x => !keys.has(recentLocationKey(x)));
-    return [...recent, ...fill].slice(0, 12);
+    return [...recent, ...fill].slice(0, RECENT_LOCATIONS_CAP);
 }
 
 function mergeRecentLocation(list, query, location) {
     const item = makeRecentLocation(query, location);
-    if (!item) return Array.isArray(list) ? list.slice(0, 12) : [];
+    if (!item) return Array.isArray(list) ? list.slice(0, RECENT_LOCATIONS_CAP) : [];
     const key = recentLocationKey(item);
-    return [item, ...(Array.isArray(list) ? list : []).filter(x => recentLocationKey(x) !== key)].slice(0, 12);
+    return [item, ...(Array.isArray(list) ? list : []).filter(x => recentLocationKey(x) !== key)].slice(0, RECENT_LOCATIONS_CAP);
 }
 
 function loadRecentLocations() {
@@ -2979,7 +2986,7 @@ function loadRecentLocations() {
         return parsed
             .map(x => makeRecentLocation(x.query, x.location || x))
             .filter(Boolean)
-            .slice(0, 12);
+            .slice(0, RECENT_LOCATIONS_CAP);
     } catch (e) {
         return [];
     }
@@ -2998,12 +3005,9 @@ function recentLocationLabel(item) {
 
 function renderRecentLocations() {
     if (!recentLocationsEl) return;
+    // displayedRecentLocations always pads with seeds, so the list is never
+    // empty and the panel is always shown.
     const recent = displayedRecentLocations();
-    if (recent.length === 0) {
-        recentLocationsEl.hidden = true;
-        recentLocationsEl.innerHTML = '';
-        return;
-    }
     recentLocationsEl.innerHTML = recent.map((item, i) =>
         `<button type="button" class="recent-location-btn" data-idx="${i}">${escapeHtml(recentLocationLabel(item))}</button>`
     ).join('');
@@ -3047,10 +3051,12 @@ let autoPickNextSearch = false;
 
 searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const query = searchInput.value.trim();
-    if (!query) return;
+    // Capture and clear before any early return, so an empty/whitespace query
+    // can't leave the flag set and leak auto-pick into the user's next search.
     const autoPick = autoPickNextSearch;
     autoPickNextSearch = false;
+    const query = searchInput.value.trim();
+    if (!query) return;
 
     searchError.hidden = true;
     searchForm.querySelector('button').disabled = true;

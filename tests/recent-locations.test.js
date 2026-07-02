@@ -18,7 +18,14 @@ function functionSource(name) {
     throw new Error(`${name} function body not found`);
 }
 
+function constSource(name) {
+    const m = appSrc.match(new RegExp(`const ${name} = [^;]+;`));
+    assert.notStrictEqual(m, null, `${name} should exist`);
+    return m[0];
+}
+
 const helpers = new Function(`
+${constSource('RECENT_LOCATIONS_CAP')}
 ${functionSource('makeRecentLocation')}
 ${functionSource('recentLocationKey')}
 ${functionSource('mergeRecentLocation')}
