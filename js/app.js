@@ -1554,37 +1554,37 @@ function renderCurrent(current, airQuality) {
             </div>
         </div>
         <div class="current-details-grid">
-            <div class="detail-item" style="grid-column:2;grid-row:1;">
+            <div class="detail-item" style="grid-column:1;grid-row:1;">
                 <span class="detail-label">${t('humidity')}</span>
                 <span class="detail-value">${current.relative_humidity_2m}%</span>
             </div>
-            <div class="detail-item" style="grid-column:2;grid-row:2;">
+            <div class="detail-item" style="grid-column:1;grid-row:2;">
                 <span class="detail-label">${t('dewPoint')}</span>
                 <span class="detail-value">${Math.round(current.dew_point_2m)}${tempUnit()}</span>
             </div>
-            <div class="detail-item" style="grid-column:2;grid-row:3;">
+            <div class="detail-item" style="grid-column:1;grid-row:3;">
                 <span class="detail-label">${t('wind')}</span>
                 <span class="detail-value">${Math.round(current.wind_speed_10m)} ${windUnit()} ${windDirection(current.wind_direction_10m)}</span>
             </div>
-            <div class="detail-item" style="grid-column:2;grid-row:4;">
+            <div class="detail-item" style="grid-column:1;grid-row:4;">
                 <span class="detail-label">${t('gusts')}</span>
                 <span class="detail-value">${Math.round(current.wind_gusts_10m)} ${windUnit()}</span>
             </div>
-            <div class="detail-item" style="grid-column:1;grid-row:1;">
+            <div class="detail-item" style="grid-column:2;grid-row:1;">
                 <span class="detail-label">${t('visibility')}</span>
                 <span class="detail-value">${fmtVisibility(current.visibility)}</span>
             </div>
-            <div class="detail-item" style="grid-column:1;grid-row:2;">
+            <div class="detail-item" style="grid-column:2;grid-row:2;">
                 <span class="detail-label">${t('uvIndex')}</span>
                 <span class="detail-value" style="color:${uvInfo.color};">${uvVal} ${uvInfo.text}</span>
             </div>
             ${aqiInfo ? `
-            <div class="detail-item" style="grid-column:1;grid-row:3;">
+            <div class="detail-item" style="grid-column:2;grid-row:3;">
                 <span class="detail-label">${t('airQuality')}</span>
                 <span class="detail-value" style="color:${aqiInfo.color};">${aqi} (${aqiInfo.text})</span>
             </div>` : ''}
             ${dom && aqi > 50 ? `
-            <div class="detail-item" style="grid-column:1;grid-row:4;">
+            <div class="detail-item" style="grid-column:2;grid-row:4;">
                 <span class="detail-label">${t('mainPollutant')}</span>
                 <span class="detail-value">${t(dom)}</span>
             </div>` : ''}

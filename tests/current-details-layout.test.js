@@ -59,16 +59,15 @@ const at = (label, col, row) => {
     assert.strictEqual(p.row, row, `${label} row`);
 };
 
-// Left column: Visibility above UV Index.
-at('visibility', '1', '1');
-at('uvIndex', '1', '2');
-// Right column: Humidity above Dew Point, Wind above Gusts.
-at('humidity', '2', '1');
-at('dewPoint', '2', '2');
-at('wind', '2', '3');
-at('gusts', '2', '4');
-// AQI (half-width) and Pollutant fill the left column below UV Index.
-at('airQuality', '1', '3');
-at('mainPollutant', '1', '4');
+// Left column: Humidity above Dew Point, Wind above Gusts.
+at('humidity', '1', '1');
+at('dewPoint', '1', '2');
+at('wind', '1', '3');
+at('gusts', '1', '4');
+// Right column: Visibility above UV Index, then AQI and Pollutant.
+at('visibility', '2', '1');
+at('uvIndex', '2', '2');
+at('airQuality', '2', '3');
+at('mainPollutant', '2', '4');
 
 console.log('current-details-layout: OK');
