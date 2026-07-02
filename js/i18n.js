@@ -190,7 +190,7 @@ const TRANSLATIONS = {
         removeSection: 'Remove section',
         minimizeSection: 'Minimize section',
         hideChart: 'Hide chart',
-        forecastColorsCaption: '— colors show relative temps: red = warmest, blue = coolest',
+        forecastColorsCaption: 'red = warmest, blue = coolest',
         alertUntil: 'until {time}',
 
         // Radar controls
