@@ -42,3 +42,8 @@ const cssSrc = fs.readFileSync(path.join(__dirname, '..', 'css/style.css'), 'utf
 assert.match(cssSrc, /\.current-details-grid \.detail-label\s*\{[^}]*color:\s*var\(--text-muted\)/, 'label is muted');
 assert.match(cssSrc, /\.current-details-grid \.detail-label::after\s*\{[^}]*content:\s*':'/, 'label has a colon');
 assert.match(cssSrc, /\.current-details-grid \.detail-value\s*\{[^}]*font-weight:\s*600/, 'value is emphasized');
+
+const detailsGridRule = cssSrc.match(/\.current-details-grid\s*\{([^}]*)\}/);
+assert.ok(detailsGridRule, 'current details grid rule should exist');
+assert.match(detailsGridRule[1], /border-top:\s*1px solid rgba\(209,\s*213,\s*219,\s*0\.55\)\s*;/, 'details grid is separated from summary');
+assert.match(detailsGridRule[1], /padding-top:\s*0\.75rem\s*;/, 'details grid divider has breathing room');
