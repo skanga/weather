@@ -1224,7 +1224,7 @@ section:empty {
 
 /* Ensure spacing after column-spanning elements */
 #weather-content > #weather-summary {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.2rem;
 }
 
 
