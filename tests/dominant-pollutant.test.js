@@ -62,6 +62,9 @@ const renderSrc = functionSource(appSrc, 'renderCurrent');
 assert.ok(/dominantPollutant/.test(renderSrc), 'renderCurrent should compute the dominant pollutant');
 assert.ok(/t\('mainPollutant'\)/.test(renderSrc), 'renderCurrent should label its own mainPollutant row');
 assert.ok(/t\(dom\)/.test(renderSrc), 'renderCurrent should translate the pollutant key');
+// Only surface the pollutant once air is Moderate or worse; at "Good" there is
+// nothing of concern, so the row would just be noise.
+assert.ok(/aqi > 50/.test(renderSrc), 'pollutant row should be gated on AQI > 50');
 
 // Every language defines the mainPollutant label and all six pollutant names.
 const i18nSrc = fs.readFileSync(path.join(__dirname, '..', 'js/i18n.js'), 'utf8');
