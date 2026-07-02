@@ -949,15 +949,15 @@ html[data-auto-resume] #home-view { display: none; }
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 600;
-    line-height: 1;
     color: var(--text);
     transition: background 0.2s;
 }
 
-#back-btn::before {
-    content: "\2190";
-    font-size: 1rem;
-    line-height: 1;
+.back-btn-icon {
+    width: 1rem;
+    height: 1rem;
+    display: block;
+    flex: 0 0 auto;
 }
 
 #back-btn:hover {

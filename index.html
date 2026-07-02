@@ -77,7 +77,12 @@
     <div id="weather-view" class="view" hidden>
         <header class="weather-header">
             <div class="weather-toolbar">
-                <button id="back-btn" data-i18n="searchAnotherCity" data-i18n-aria-label="backToSearch" aria-label="Back to search">Search</button>
+                <button id="back-btn" data-i18n-aria-label="backToSearch" aria-label="Back to search">
+                    <svg class="back-btn-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                        <path d="M7 3 2 8l5 5M3 8h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span data-i18n="searchAnotherCity">Search</span>
+                </button>
                 <div class="weather-toggles">
                     <button id="units-toggle" class="units-toggle">°F</button>
                     <button id="time-toggle" class="units-toggle">12H</button>

@@ -9,6 +9,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 for (const snippet of [
     'data-i18n="searchAnotherCity"',
+    'class="back-btn-icon"',
     'id="alerts-section"',
     'id="weather-summary"',
     'id="setting-openweather-key"',
