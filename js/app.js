@@ -1325,10 +1325,7 @@ function uvLabel(uv) {
 
 async function fetchNWSAlerts(lat, lon) {
     try {
-        const res = await fetch(
-            `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
-            { headers: { 'User-Agent': 'Weather (https://skanga.github.io/weather/)' } }
-        );
+        const res = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
         if (!res.ok) return [];
         const data = await res.json();
         return dedupeNWSAlerts(data.features || []);
@@ -3099,11 +3096,7 @@ searchForm.addEventListener('submit', async (e) => {
 async function resolveCurrentLocation(lat, lon) {
     const fallback = { name: 'Current Location', region: '', country: '', lat, lon };
     try {
-        const res = await fetchWithTimeout(
-            `https://api.weather.gov/points/${lat},${lon}`,
-            { headers: { 'User-Agent': 'Weather (https://skanga.github.io/weather/)' } },
-            5000
-        );
+        const res = await fetchWithTimeout(`https://api.weather.gov/points/${lat},${lon}`, {}, 5000);
         if (!res.ok) return fallback;
         const data = await res.json();
         const rel = data.properties?.relativeLocation?.properties || {};

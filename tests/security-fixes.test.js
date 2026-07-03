@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const appSrc = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
+const indexSrc = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 function functionSource(src, name) {
     const start = src.indexOf(`function ${name}`);
@@ -59,4 +60,12 @@ function functionSource(src, name) {
         url,
         'https://api.openweathermap.org/data/3.0/onecall?lat=10.5&lon=-20.25&exclude=current%2Cminutely%2Chourly%2Cdaily&appid=key%2Fwith%2Bchars'
     );
+}
+
+{
+    assert.doesNotMatch(appSrc, /User-Agent/, 'browser fetches must not set forbidden User-Agent header');
+    assert.match(indexSrc, /use your current location, coordinates are sent/);
+    assert.match(indexSrc, /city geocoding, weather forecasts, and air quality data/);
+    assert.match(indexSrc, /US location labels and severe weather alerts/);
+    assert.doesNotMatch(indexSrc, /https:\/\/[b-d]\.basemaps\.cartocdn\.com/);
 }
