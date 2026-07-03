@@ -19,18 +19,23 @@ function functionSource(src, name) {
 
 const body = functionSource(appSrc, 'fetchAllWeatherData');
 
-// Layout should be applied once per (non-superseded) load, on either the
-// success or the failure path of the meteo fetch — not redundantly after each
-// independent async render (AQI, alerts, radar all render into sections that
-// were already placed).
+// Layout should be applied once per terminal path of the main meteo load:
+// success, forecast request failure, or render failure after data arrives.
+// It should not be redundantly applied after independent async renders (AQI,
+// alerts, radar all render into sections that were already placed).
 const calls = (body.match(/applySectionPreferences\(\)/g) || []).length;
-assert.strictEqual(calls, 2, `applySectionPreferences() should be called exactly twice (success + catch), found ${calls}`);
+assert.strictEqual(calls, 3, `applySectionPreferences() should be called exactly three times (success + two error paths), found ${calls}`);
 
-// One of the two must be in the meteo failure path so layout still applies.
+// Both error paths must apply layout so empty dependent sections are hidden.
 assert.match(
     body,
     /failedToLoadWeather[\s\S]*?applySectionPreferences\(\)/,
-    'the meteo catch block must apply layout on failure'
+    'the forecast request failure path must apply layout'
+);
+assert.match(
+    body,
+    /failedToRenderWeather[\s\S]*?applySectionPreferences\(\)/,
+    'the weather render failure path must apply layout'
 );
 
 // On forecast failure the dependent sections (wind/hourly/daily/sun/moon) are

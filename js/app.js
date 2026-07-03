@@ -894,8 +894,17 @@ function updateDayBackgrounds() {
 
 async function geocodeFetch(name) {
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=10&language=en&format=json`;
-    const res = await fetchWithTimeout(url);
-    if (!res.ok) throw new Error('Geocoding request failed');
+    let res;
+    try {
+        res = await fetchWithTimeout(url);
+    } catch (err) {
+        console.error('Location search request failed', { query: name, error: err });
+        throw new Error('Location search failed. Check your connection and try again, or use current location.');
+    }
+    if (!res.ok) {
+        console.error('Location search request failed', { query: name, status: res.status, statusText: res.statusText });
+        throw new Error(`Location search failed (HTTP ${res.status}). Try again, or use current location.`);
+    }
     return res.json();
 }
 
@@ -1259,8 +1268,20 @@ async function fetchOpenMeteo(lat, lon) {
         forecast_days: 10,
     });
     const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?${params}`);
-    if (!res.ok) throw new Error('Weather data request failed');
-    return res.json();
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        const statusText = res.statusText ? ` ${res.statusText}` : '';
+        const err = new Error(`Open-Meteo forecast request failed (HTTP ${res.status}${statusText})`);
+        err.status = res.status;
+        err.statusText = res.statusText || '';
+        err.responseText = text;
+        throw err;
+    }
+    try {
+        return await res.json();
+    } catch (err) {
+        throw new Error(`Open-Meteo forecast response was not valid JSON: ${err.message || err}`);
+    }
 }
 
 async function fetchAirQuality(lat, lon) {
@@ -1277,8 +1298,10 @@ async function fetchAirQuality(lat, lon) {
             const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
             if (res.ok) return (await res.json()).current;
         }
+        console.warn('Air quality unavailable', { lat, lon, reason: 'all requests failed' });
         return null;
-    } catch {
+    } catch (err) {
+        console.warn('Air quality unavailable', { lat, lon, error: err });
         return null;
     }
 }
@@ -1326,10 +1349,14 @@ function uvLabel(uv) {
 async function fetchNWSAlerts(lat, lon) {
     try {
         const res = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
-        if (!res.ok) return [];
+        if (!res.ok) {
+            console.warn('NWS alerts unavailable', { lat, lon, status: res.status, statusText: res.statusText });
+            return [];
+        }
         const data = await res.json();
         return dedupeNWSAlerts(data.features || []);
-    } catch {
+    } catch (err) {
+        console.warn('NWS alerts unavailable', { lat, lon, error: err });
         return [];
     }
 }
@@ -1408,10 +1435,14 @@ async function fetchOpenWeatherAlerts(lat, lon) {
     if (!apiKey) return missingOpenWeatherKeyAlert();
     try {
         const res = await fetch(buildOpenWeatherAlertsUrl(lat, lon, apiKey));
-        if (!res.ok) return [];
+        if (!res.ok) {
+            console.warn('OpenWeatherMap alerts unavailable', { lat, lon, status: res.status, statusText: res.statusText });
+            return [];
+        }
         const data = await res.json();
         return mapOpenWeatherAlerts(data, Math.floor(Date.now() / 1000));
-    } catch {
+    } catch (err) {
+        console.warn('OpenWeatherMap alerts unavailable', { lat, lon, error: err });
         return [];
     }
 }
@@ -2596,7 +2627,8 @@ async function loadRadar(lat, lon) {
             }
         });
 
-    } catch {
+    } catch (err) {
+        console.warn('Radar unavailable', { lat, lon, error: err });
         document.getElementById('radar-container').innerHTML =
             `<div style="text-align:center;padding:2rem;color:#9ca3af;">${t('radarUnavailable')}</div>`;
     }
@@ -2855,30 +2887,52 @@ async function fetchAllWeatherData(lat, lon, country, region) {
     document.getElementById('sun-section').innerHTML = '';
     document.getElementById('moon-section').innerHTML = '';
 
+    function weatherLoadErrorMessage(err) {
+        if (err && err.status === 429) return t('failedToLoadWeatherRateLimit');
+        if (err && err.status) return t('failedToLoadWeatherStatus', { status: String(err.status) });
+        if (err && (err.name === 'AbortError' || err.message === 'AbortError')) return t('failedToLoadWeatherTimeout');
+        return t('failedToLoadWeather');
+    }
+
     // Fire all API calls in parallel, render each section as its data arrives
 
     // Weather data — renders most of the page
-    const meteoPromise = fetchOpenMeteo(lat, lon).then(meteo => {
-        // Bail if a newer fetchAllWeatherData call has superseded us
+    const meteoPromise = (async () => {
+        let meteo;
+        try {
+            meteo = await fetchOpenMeteo(lat, lon);
+        } catch (err) {
+            if (myToken !== weatherLoadToken) return null;
+            console.error('Weather forecast request failed', { lat, lon, country: _lastCountry, region: _lastRegion, error: err });
+            document.getElementById('current-section').innerHTML =
+                `<p class="error">${escapeHtml(weatherLoadErrorMessage(err))}</p>`;
+            applySectionPreferences();
+            return null;
+        }
+
         if (myToken !== weatherLoadToken) return null;
-        _lastMeteoData = meteo;
-        _sunriseTime = new Date(meteo.daily.sunrise[0]);
-        _sunsetTime = new Date(meteo.daily.sunset[0]);
-        renderWeatherSummary(meteo.current, meteo.hourly, meteo.daily);
-        renderCurrent(meteo.current, null); // AQI added later when it arrives
-        renderWind(meteo.current);
-        renderHourly(meteo.hourly);
-        renderDaily(meteo.daily, meteo.hourly);
-        renderSunMoon(meteo.daily, lat, lon, meteo.utc_offset_seconds);
-        applySectionPreferences();
-        return meteo;
-    }).catch(() => {
-        if (myToken !== weatherLoadToken) return null;
-        document.getElementById('current-section').innerHTML =
-            `<p class="error">${t('failedToLoadWeather')}</p>`;
-        applySectionPreferences();
-        return null;
-    });
+        try {
+            _lastMeteoData = meteo;
+            _sunriseTime = new Date(meteo.daily.sunrise[0]);
+            _sunsetTime = new Date(meteo.daily.sunset[0]);
+            renderWeatherSummary(meteo.current, meteo.hourly, meteo.daily);
+            renderCurrent(meteo.current, null); // AQI added later when it arrives
+            renderWind(meteo.current);
+            renderHourly(meteo.hourly);
+            renderDaily(meteo.daily, meteo.hourly);
+            renderSunMoon(meteo.daily, lat, lon, meteo.utc_offset_seconds);
+            applySectionPreferences();
+            return meteo;
+        } catch (err) {
+            if (myToken !== weatherLoadToken) return null;
+            _lastMeteoData = null;
+            console.error('Weather render failed', { lat, lon, country: _lastCountry, region: _lastRegion, error: err });
+            document.getElementById('current-section').innerHTML =
+                `<p class="error">${escapeHtml(t('failedToRenderWeather'))}</p>`;
+            applySectionPreferences();
+            return null;
+        }
+    })();
 
     // AQI — update current conditions when ready
     fetchAirQuality(lat, lon).then(airQuality => {
@@ -2890,14 +2944,18 @@ async function fetchAllWeatherData(lat, lon, country, region) {
                 renderCurrent(meteo.current, airQuality);
             }
         });
-    }).catch(() => {});
+    }).catch(err => {
+        console.warn('Air quality unavailable', { lat, lon, error: err });
+    });
 
     // Alerts — render independently
     fetchAlerts(lat, lon, _lastCountry).then(alerts => {
         if (myToken !== weatherLoadToken) return;
         _lastAlerts = alerts;
         renderAlerts(alerts);
-    }).catch(() => {});
+    }).catch(err => {
+        console.warn('Weather alerts unavailable', { lat, lon, country: _lastCountry, error: err });
+    });
 
     // Radar — render independently (has its own loading state)
     meteoPromise.then(() => {
