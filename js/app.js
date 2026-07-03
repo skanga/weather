@@ -2954,6 +2954,10 @@ function recentLocationKey(item) {
     return `${lat.toFixed(4)},${lon.toFixed(4)}`;
 }
 
+function recentLocationDisplayKey(item) {
+    return recentLocationLabel(item).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 // ponytail: static seeds that pad the recents list up to the cap; not
 // persisted. Real history is shown first, and each real search pushes one seed
 // off the end (see displayedRecentLocations) rather than clearing them all.
@@ -2979,7 +2983,13 @@ function displayedRecentLocations() {
     const recent = loadRecentLocations();
     const keys = new Set(recent.map(recentLocationKey));
     const fill = POPULAR_LOCATIONS.filter(x => !keys.has(recentLocationKey(x)));
-    return [...recent, ...fill].slice(0, RECENT_LOCATIONS_CAP);
+    const displayKeys = new Set();
+    return [...recent, ...fill].filter(item => {
+        const key = recentLocationDisplayKey(item);
+        if (!key || displayKeys.has(key)) return false;
+        displayKeys.add(key);
+        return true;
+    }).slice(0, RECENT_LOCATIONS_CAP);
 }
 
 function mergeRecentLocation(list, query, location) {

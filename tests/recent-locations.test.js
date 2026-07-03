@@ -30,7 +30,26 @@ ${functionSource('makeRecentLocation')}
 ${functionSource('recentLocationKey')}
 ${functionSource('mergeRecentLocation')}
 ${functionSource('recentLocationLabel')}
-return { makeRecentLocation, mergeRecentLocation, recentLocationLabel };
+${functionSource('recentLocationDisplayKey')}
+let storedRecent = [];
+function loadRecentLocations() { return storedRecent; }
+const POPULAR_LOCATIONS = [
+    makeRecentLocation('Seattle', {
+        name: 'Seattle',
+        region: 'Washington',
+        country: 'United States',
+        lat: 47.6062,
+        lon: -122.3321,
+    }),
+];
+${functionSource('displayedRecentLocations')}
+return {
+    makeRecentLocation,
+    mergeRecentLocation,
+    recentLocationLabel,
+    displayedRecentLocations,
+    setStoredRecent(list) { storedRecent = list; },
+};
 `)();
 
 {
@@ -77,6 +96,20 @@ return { makeRecentLocation, mergeRecentLocation, recentLocationLabel };
 assert.strictEqual(helpers.recentLocationLabel({
     location: { name: 'Tokyo', region: '', country: 'Japan' },
 }), 'Tokyo, Japan');
+
+{
+    helpers.setStoredRecent([
+        helpers.makeRecentLocation('Seattle zip', {
+            name: 'Seattle',
+            region: 'Washington',
+            country: 'United States',
+            lat: 47.6101,
+            lon: -122.2015,
+        }),
+    ]);
+    const labels = helpers.displayedRecentLocations().map(helpers.recentLocationLabel);
+    assert.deepStrictEqual(labels.filter(label => label === 'Seattle, Washington'), ['Seattle, Washington']);
+}
 
 assert.match(htmlSrc, /id="recent-locations"/);
 assert.doesNotMatch(appSrc, /details-section/);
