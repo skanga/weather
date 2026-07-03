@@ -1864,6 +1864,10 @@ body.is-dragging .weather-col:empty {
     .home-header h1 {
         font-size: 2rem;
     }
+
+    #search-form button[type="submit"] {
+        padding: 0.75rem 1rem;
+    }
 }
 
 /* --- Language UI ---------------------------------------------------------- */

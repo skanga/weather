@@ -28,3 +28,13 @@ assert.doesNotMatch(
     /@media\s*\(max-width:\s*600px\)\s*\{[\s\S]*?#search-form\s*\{[^}]*flex-direction:\s*column\s*;/,
     'mobile search form should keep the city box and search button on one row'
 );
+
+const mobileSearchButtonRule = css.match(
+    /@media\s*\(max-width:\s*600px\)\s*\{[\s\S]*?#search-form\s+button\[type="submit"\]\s*\{([^}]*)\}/
+);
+assert.ok(mobileSearchButtonRule, 'mobile search submit button rule should exist');
+assert.match(
+    mobileSearchButtonRule[1],
+    /padding:\s*0\.75rem\s+1rem\s*;/,
+    'mobile search submit button should use narrower horizontal padding'
+);
