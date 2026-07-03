@@ -28,15 +28,18 @@
                 }
             } catch (e) { /* private mode — defaults apply */ }
         })();
-        // Auto-resume gate: if the user has the "Remember last city" setting
-        // on (default), no URL params are present, and a lastLocation is
-        // saved, mark the html element so CSS hides #home-view until app.js
-        // takes over and renders the weather view. Prevents flash-of-home.
+        // Auto-resume gate: when a launch URL already contains direct
+        // coordinates, or when "Remember last city" can restore a saved
+        // location on a bare visit, mark the html element so CSS hides
+        // #home-view until app.js renders the weather view. Prevents
+        // flash-of-home on installed/PWA starts.
         (function () {
             try {
-                var hasUrlLoc = /[?&](lat|q)=/.test(location.search) || location.hash.length > 1;
+                var params = new URLSearchParams(location.search);
+                var hasDirectLocation = params.has('lat') && params.has('lon');
+                var hasQueryOnly = params.has('q') || location.hash.length > 1;
                 var remember = localStorage.getItem('rememberLastCity') !== 'false';
-                if (!hasUrlLoc && remember && localStorage.getItem('lastLocation')) {
+                if (hasDirectLocation || (!hasQueryOnly && remember && localStorage.getItem('lastLocation'))) {
                     document.documentElement.setAttribute('data-auto-resume', 'true');
                 }
             } catch (e) { /* private mode / no storage — fall through to home view */ }
