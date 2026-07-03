@@ -688,6 +688,7 @@ html[data-auto-resume] #home-view { display: none; }
 
 #search-input {
     flex: 1;
+    min-width: 0;
     padding: 0.75rem 1rem;
     font-size: 1rem;
     border: 2px solid var(--border);
@@ -1862,10 +1863,6 @@ body.is-dragging .weather-col:empty {
 
     .home-header h1 {
         font-size: 2rem;
-    }
-
-    #search-form {
-        flex-direction: column;
     }
 }
 
