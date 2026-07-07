@@ -2204,9 +2204,9 @@ function renderRadar(lat, lon) {
             <div id="radar-time" style="font-size:0.8rem;color:#6b7280;"></div>
             <div class="radar-controls">
                 <button id="radar-pause" class="radar-ctrl-btn" title="${t('pauseRadar')}">⏸</button>
-                <button id="radar-slower" class="radar-ctrl-btn" title="${t('slowerRadar')}">−</button>
+                <button id="radar-slower" class="radar-ctrl-btn" title="${t('slowerRadar')}">⏪</button>
                 <span id="radar-speed-label" style="font-size:0.7rem;color:var(--text-muted);min-width:2.5rem;text-align:center;">1x</span>
-                <button id="radar-faster" class="radar-ctrl-btn" title="${t('fasterRadar')}">+</button>
+                <button id="radar-faster" class="radar-ctrl-btn" title="${t('fasterRadar')}">⏩</button>
             </div>
         </div>
     `;
