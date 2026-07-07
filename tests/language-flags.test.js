@@ -6,4 +6,4 @@ const appSrc = fs.readFileSync(path.resolve(__dirname, '..', 'js/app.js'), 'utf8
 
 assert.match(appSrc, /function assetUrl\(/);
 assert.doesNotMatch(appSrc, /src="\/img\/flags\//);
-assert.match(appSrc, /assetUrl\(LANGUAGE_FLAGS\[code\]\)/);
+assert.match(appSrc, /assetUrl\(f\.path\)/);

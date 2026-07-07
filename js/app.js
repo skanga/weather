@@ -440,6 +440,28 @@ function renderHiddenSectionsBar() {
 
 // --- Drag-to-Reorder ---------------------------------------------------------
 
+// Shared by initSectionDrag and initChartDrag: both pin the dragged element to
+// the pointer with position:fixed and restore it on drop. The two handlers
+// differ in how they pick a drop target (cross-column vs single-list), so
+// only this visual bookkeeping — not the reordering logic itself — is shared.
+function startDragVisual(el, top, left, width) {
+    el.classList.add('section-dragging');
+    el.style.position = 'fixed';
+    el.style.top = top + 'px';
+    el.style.left = left + 'px';
+    el.style.width = width + 'px';
+    el.style.zIndex = '999';
+}
+
+function endDragVisual(el) {
+    el.classList.remove('section-dragging');
+    el.style.position = '';
+    el.style.top = '';
+    el.style.left = '';
+    el.style.width = '';
+    el.style.zIndex = '';
+}
+
 function initSectionDrag() {
     const container = document.getElementById('weather-content');
     if (!container) return;
@@ -469,12 +491,7 @@ function initSectionDrag() {
         placeholder.style.height = rect.height + 'px';
         dragEl.parentNode.insertBefore(placeholder, dragEl);
 
-        dragEl.classList.add('section-dragging');
-        dragEl.style.position = 'fixed';
-        dragEl.style.top = (e.clientY - offsetY) + 'px';
-        dragEl.style.left = (e.clientX - offsetX) + 'px';
-        dragEl.style.width = rect.width + 'px';
-        dragEl.style.zIndex = '999';
+        startDragVisual(dragEl, e.clientY - offsetY, e.clientX - offsetX, rect.width);
         dragActive = true;
         document.body.classList.add('is-dragging');
     });
@@ -524,12 +541,7 @@ function initSectionDrag() {
         placeholder.parentNode.insertBefore(dragEl, placeholder);
         placeholder.remove();
 
-        dragEl.classList.remove('section-dragging');
-        dragEl.style.position = '';
-        dragEl.style.top = '';
-        dragEl.style.left = '';
-        dragEl.style.width = '';
-        dragEl.style.zIndex = '';
+        endDragVisual(dragEl);
 
         saveLayoutFromDOM();
 
@@ -652,12 +664,7 @@ function initChartDrag() {
         placeholder.style.height = rect.height + 'px';
         scroll.insertBefore(placeholder, chartRow);
 
-        chartRow.classList.add('section-dragging');
-        chartRow.style.position = 'fixed';
-        chartRow.style.top = (e.clientY - offsetY) + 'px';
-        chartRow.style.left = scrollRect.left + 'px';
-        chartRow.style.width = scrollRect.width + 'px';
-        chartRow.style.zIndex = '999';
+        startDragVisual(chartRow, e.clientY - offsetY, scrollRect.left, scrollRect.width);
 
         const onMove = (e2) => {
             e2.preventDefault();
@@ -679,12 +686,7 @@ function initChartDrag() {
             scroll.insertBefore(chartRow, placeholder);
             placeholder.remove();
 
-            chartRow.classList.remove('section-dragging');
-            chartRow.style.position = '';
-            chartRow.style.top = '';
-            chartRow.style.left = '';
-            chartRow.style.width = '';
-            chartRow.style.zIndex = '';
+            endDragVisual(chartRow);
 
             // Save new chart order
             const newOrder = [...scroll.querySelectorAll('.chart-row')]
@@ -696,10 +698,12 @@ function initChartDrag() {
 
             document.removeEventListener('pointermove', onMove);
             document.removeEventListener('pointerup', onUp);
+            document.removeEventListener('pointercancel', onUp);
         };
 
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
+        document.addEventListener('pointercancel', onUp);
     });
 }
 
@@ -815,6 +819,7 @@ function weatherInfo(code, isNight) {
 }
 
 function windDirection(degrees) {
+    if (!Number.isFinite(degrees)) return '';
     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return dirs[Math.round(degrees / 45) % 8];
 }
@@ -822,8 +827,9 @@ function windDirection(degrees) {
 // Full-form cardinal, used only in the wind widget readout (which has room);
 // the compass dial and the compact Current Conditions line keep abbreviations.
 function windDirectionLong(degrees) {
-    const dirs = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
-    return dirs[Math.round(degrees / 45) % 8];
+    if (!Number.isFinite(degrees)) return '';
+    const keys = ['windDirN', 'windDirNE', 'windDirE', 'windDirSE', 'windDirS', 'windDirSW', 'windDirW', 'windDirNW'];
+    return t(keys[Math.round(degrees / 45) % 8]);
 }
 
 function getMoonPhase(date) {
@@ -878,11 +884,19 @@ function tempBackground(avg, minAvg, avgRange) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
+// range is guarded against 0 (all-equal temps) since it's used as a divisor
+// in tempBackground; use max - min directly where the raw span is needed
+// (e.g. the color-threshold check).
+function avgTempMinRange(avgTemps) {
+    const min = Math.min(...avgTemps);
+    const max = Math.max(...avgTemps);
+    return { min, max, range: (max - min) || 1 };
+}
+
 function updateDayBackgrounds() {
     const avgTemps = window._forecastAvgTemps;
     if (!avgTemps) return;
-    const minAvg = Math.min(...avgTemps);
-    const avgRange = (Math.max(...avgTemps) - minAvg) || 1;
+    const { min: minAvg, range: avgRange } = avgTempMinRange(avgTemps);
     document.querySelectorAll('.forecast-day').forEach((el, i) => {
         if (i < avgTemps.length) {
             el.style.background = tempBackground(avgTemps[i], minAvg, avgRange);
@@ -1295,7 +1309,7 @@ async function fetchAirQuality(lat, lon) {
     try {
         for (const current of fields) {
             const params = new URLSearchParams({ latitude: lat, longitude: lon, current });
-            const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
+            const res = await fetchWithTimeout(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
             if (res.ok) return (await res.json()).current;
         }
         console.warn('Air quality unavailable', { lat, lon, reason: 'all requests failed' });
@@ -1348,7 +1362,7 @@ function uvLabel(uv) {
 
 async function fetchNWSAlerts(lat, lon) {
     try {
-        const res = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
+        const res = await fetchWithTimeout(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
         if (!res.ok) {
             console.warn('NWS alerts unavailable', { lat, lon, status: res.status, statusText: res.statusText });
             return [];
@@ -1434,7 +1448,7 @@ async function fetchOpenWeatherAlerts(lat, lon) {
     const apiKey = (storageGet('openWeatherApiKey') || '').trim();
     if (!apiKey) return missingOpenWeatherKeyAlert();
     try {
-        const res = await fetch(buildOpenWeatherAlertsUrl(lat, lon, apiKey));
+        const res = await fetchWithTimeout(buildOpenWeatherAlertsUrl(lat, lon, apiKey));
         if (!res.ok) {
             console.warn('OpenWeatherMap alerts unavailable', { lat, lon, status: res.status, statusText: res.statusText });
             return [];
@@ -1582,8 +1596,8 @@ function renderWeatherSummary(current, hourly, daily) {
 function renderCurrent(current, airQuality) {
     const info = weatherInfo(current.weather_code, isNightTime());
     const section = document.getElementById('current-section');
-    const uvVal = Math.round(current.uv_index);
-    const uvInfo = uvLabel(uvVal);
+    const uvVal = Number.isFinite(current.uv_index) ? Math.round(current.uv_index) : null;
+    const uvInfo = uvVal != null ? uvLabel(uvVal) : null;
     const aqi = airQuality ? airQuality.us_aqi : null;
     const aqiInfo = aqi != null ? aqiLabel(aqi) : null;
     const dom = dominantPollutant(airQuality);
@@ -1621,10 +1635,11 @@ function renderCurrent(current, airQuality) {
                 <span class="detail-label">${t('visibility')}</span>
                 <span class="detail-value">${fmtVisibility(current.visibility)}</span>
             </div>
+            ${uvInfo ? `
             <div class="detail-item" style="grid-column:2;grid-row:2;">
                 <span class="detail-label">${t('uvIndex')}</span>
                 <span class="detail-value" style="color:${uvInfo.color};">${uvVal} ${uvInfo.text}</span>
-            </div>
+            </div>` : ''}
             ${aqiInfo ? `
             <div class="detail-item" style="grid-column:2;grid-row:3;">
                 <span class="detail-label">${t('airQuality')}</span>
@@ -1683,10 +1698,7 @@ function renderHourly(hourly) {
     let html = `<h2>${t('hourlyForecast')}</h2><div class="hourly-scroll">`;
     for (let i = startIdx; i < startIdx + 24 && i < hourly.time.length; i++) {
         const time = new Date(hourly.time[i]);
-        const hour = time.getHours();
-        const label = units.time24h
-            ? hour.toString().padStart(2, '0') + ':00'
-            : (hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`);
+        const label = fmtHour(time);
         const info = weatherInfo(hourly.weather_code[i], isHourNight(hourly.time[i]));
         const wind = Math.round(hourly.wind_speed_10m[i]);
         const precipChance = hourly.precipitation_probability[i];
@@ -1724,7 +1736,8 @@ function renderDaily(daily, hourly) {
     );
     // Store globally so theme toggle can recompute
     window._forecastAvgTemps = avgTemps;
-    const tempRange = Math.max(...avgTemps) - Math.min(...avgTemps);
+    const { min: minAvg, max: maxAvg, range: avgRange } = avgTempMinRange(avgTemps);
+    const tempRange = maxAvg - minAvg;
     const showTempColors = tempRange >= tempColorThreshold() && getSettingsBool('showForecastColors');
 
     // --- Day column header (inside scroll) ---
@@ -1736,9 +1749,7 @@ function renderDaily(daily, hourly) {
         const info = weatherInfo(daily.weather_code[i]);
         const precip = daily.precipitation_sum[i];
         const chance = Math.max(...hourly.precipitation_probability.slice(i * 24, (i + 1) * 24).filter(Number.isFinite), 0);
-        const minA = Math.min(...avgTemps);
-        const rangeA = (Math.max(...avgTemps) - minA) || 1;
-        const bg = tempBackground(avgTemps[i], minA, rangeA);
+        const bg = tempBackground(avgTemps[i], minAvg, avgRange);
         dayHeaderHtml += `
             <div class="forecast-day" style="width:${DAY_WIDTH}px;min-width:${DAY_WIDTH}px;background:${bg};">
                 <div class="forecast-date">${dayLabel} ${dateLabel}</div>
@@ -1778,6 +1789,10 @@ function renderDaily(daily, hourly) {
     }
 
     const r = chartRanges;
+    const tempLabels = makeLabels(r.temp.min, r.temp.max, 4, '°', '#dc2626');
+    const atmosLabels = makeLabels(0, 100, 4, '%', '#84cc16');
+    const precipLabels = makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6');
+    const windLabels = makeLabels(0, r.wind.max, 3, '', '#2563eb');
 
     const tempLegend = `<span><span style="color:#dc2626;">■</span> ${t('chartTemperature')} (${tempUnit()})</span><span><span style="color:#9333ea;">■</span> ${t('chartFeelsLike')} (${tempUnit()})</span><span><span style="color:#16a34a;">■</span> ${t('chartDewPoint')} (${tempUnit()})</span>`;
     const atmosLegend = `<span><span style="color:#9ca3af;">■</span> ${t('chartCloudCover')} (%)</span><span><span style="color:#3b82f6;">■</span> ${t('chartPrecipChance')} (%)</span><span><span style="color:#84cc16;">■</span> ${t('chartHumidity')} (%)</span><span><span style="color:${isDarkMode() ? '#e5e7eb' : '#1a1a1a'};">■</span> ${t('chartPressure')} (inHg)</span>`;
@@ -1797,18 +1812,10 @@ function renderDaily(daily, hourly) {
                     ${dayHeaderHtml}
                     <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
                 </div>
-                ${chartRow('chart-temp', 160, tempLegend,
-                    makeLabels(r.temp.min, r.temp.max, 4, '°', '#dc2626'),
-                    makeLabels(r.temp.min, r.temp.max, 4, '°', '#dc2626'))}
-                ${chartRow('chart-atmos', 160, atmosLegend,
-                    makeLabels(0, 100, 4, '%', '#84cc16'),
-                    makeLabels(0, 100, 4, '%', '#84cc16'))}
-                ${chartRow('chart-precip', 100, precipLegend,
-                    makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6'),
-                    makeLabels(0, r.precip.maxAccum, 3, precipUnit(), '#3b82f6'))}
-                ${chartRow('chart-wind', 100, windLegend,
-                    makeLabels(0, r.wind.max, 3, '', '#2563eb'),
-                    makeLabels(0, r.wind.max, 3, '', '#2563eb'))}
+                ${chartRow('chart-temp', 160, tempLegend, tempLabels, tempLabels)}
+                ${chartRow('chart-atmos', 160, atmosLegend, atmosLabels, atmosLabels)}
+                ${chartRow('chart-precip', 100, precipLegend, precipLabels, precipLabels)}
+                ${chartRow('chart-wind', 100, windLegend, windLabels, windLabels)}
                 <div class="forecast-footer">
                     <div style="width:${AXIS_W}px;min-width:${AXIS_W}px;flex-shrink:0;"></div>
                     ${daily.time.map((dayIso, i) => {
@@ -1879,9 +1886,9 @@ function computeChartRanges(hourly, hours) {
     const wind = hourly.wind_speed_10m.slice(0, hours);
 
     return {
-        temp: { min: Math.floor(Math.min(...allTemps) - 5), max: Math.ceil(Math.max(...allTemps) + 5) },
-        precip: { maxAccum: Math.max(accumTotal, 0.1), maxHourly: Math.max(...precip, 0.01) },
-        wind: { max: Math.max(...wind, 5) },
+        temp: { min: Math.floor(Math.min(...allTemps) - 5), max: Math.ceil(Math.max(...allTemps) + 5), series: { temp, feels, dew } },
+        precip: { maxAccum: Math.max(accumTotal, 0.1), maxHourly: Math.max(...precip, 0.01), series: precip },
+        wind: { max: Math.max(...wind, 5), series: wind },
     };
 }
 
@@ -1965,9 +1972,7 @@ function drawAllCharts(hourly, hours, r) {
     if (c1) {
         const { ctx, w, h } = c1;
         const pad = 10;
-        const temp = hourly.temperature_2m.slice(0, hours);
-        const feels = hourly.apparent_temperature.slice(0, hours);
-        const dew = hourly.dew_point_2m.slice(0, hours);
+        const { temp, feels, dew } = r.temp.series;
         drawDayDividers(ctx, hours, w, h);
         drawNowLine(ctx, hourly, hours, w, h);
         drawLine(ctx, dew, hours, '#16a34a', r.temp.min, r.temp.max, w, h, pad);
@@ -2001,7 +2006,7 @@ function drawAllCharts(hourly, hours, r) {
     if (c3) {
         const { ctx, w, h } = c3;
         const pad = 8;
-        const precip = hourly.precipitation.slice(0, hours);
+        const precip = r.precip.series;
         const accum = [];
         let total = 0;
         for (let i = 0; i < hours; i++) { total += precip[i] || 0; accum.push(total); }
@@ -2024,7 +2029,7 @@ function drawAllCharts(hourly, hours, r) {
     if (c4) {
         const { ctx, w, h } = c4;
         const pad = 8;
-        const wind = hourly.wind_speed_10m.slice(0, hours);
+        const wind = r.wind.series;
         const dirs = hourly.wind_direction_10m.slice(0, hours);
         drawDayDividers(ctx, hours, w, h);
         drawNowLine(ctx, hourly, hours, w, h);
@@ -2211,13 +2216,10 @@ function renderRadar(lat, lon) {
     document.getElementById('radar-faster').setAttribute('aria-label', t('fasterRadar'));
     loadRadar(lat, lon);
 
-    document.getElementById('radar-refresh').addEventListener('click', () => {
-        if (radarInterval) { clearInterval(radarInterval); radarInterval = null; }
-        if (radarPreloadTimer) { clearTimeout(radarPreloadTimer); radarPreloadTimer = null; }
-        document.getElementById('radar-container').innerHTML = `<div class="loading" style="color:#9ca3af;">${t('refreshingRadar')}</div>`;
-        document.getElementById('radar-time').textContent = '';
-        loadRadar(lat, lon);
-    });
+    // Fully re-render on refresh (fresh control-button DOM) rather than just
+    // re-running loadRadar on the existing buttons — reusing them would stack
+    // another pause/slower/faster listener on every refresh click.
+    document.getElementById('radar-refresh').addEventListener('click', () => renderRadar(lat, lon));
 }
 
 const NOADSRADAR_BASE = 'https://noadsradar-tilesvc-15838356607.us-central1.run.app';
@@ -2246,6 +2248,22 @@ async function fetchNoadsradarFuture() {
     } finally {
         clearTimeout(timeout);
     }
+}
+
+// Shared by every tile <img> (eager and deferred): retry with a cache-busting
+// query param on error, backing off an extra second each time, then give up
+// and hide the tile after 3 tries.
+function attachTileRetry(img, url) {
+    img.onerror = function () {
+        const tries = parseInt(this.dataset.retries || '0', 10);
+        if (tries < 3) {
+            this.dataset.retries = String(tries + 1);
+            const sep = url.includes('?') ? '&' : '?';
+            setTimeout(() => { this.src = url + sep + 'r=' + (tries + 1); }, 1000 * (tries + 1));
+        } else {
+            this.style.visibility = 'hidden';
+        }
+    };
 }
 
 async function loadRadar(lat, lon) {
@@ -2322,16 +2340,9 @@ async function loadRadar(lat, lon) {
                         img.dataset.src = url; // loaded later by loadFrame
                     } else {
                         img.src = url;
-                        img.onerror = function () {
-                            const tries = parseInt(this.dataset.retries || '0', 10);
-                            if (tries < 3) {
-                                this.dataset.retries = String(tries + 1);
-                                const sep = url.includes('?') ? '&' : '?';
-                                setTimeout(() => { this.src = url + sep + 'r=' + (tries + 1); }, 1000 * (tries + 1));
-                            } else {
-                                this.style.visibility = 'hidden';
-                            }
-                        };
+                        // Retry-on-error is attached by the caller after innerHTML
+                        // insertion — an onerror set here would be discarded by
+                        // wrap.outerHTML serialization below.
                     }
                     wrap.appendChild(img);
                 }
@@ -2383,17 +2394,7 @@ async function loadRadar(lat, lon) {
         // attributes were removed (CSP-friendly + safer). We do this after
         // innerHTML so newly-parsed <img> elements have the handler.
         container.querySelectorAll('img[src]:not([data-src])').forEach(img => {
-            const original = img.src;
-            img.onerror = function () {
-                const tries = parseInt(this.dataset.retries || '0', 10);
-                if (tries < 3) {
-                    this.dataset.retries = String(tries + 1);
-                    const sep = original.includes('?') ? '&' : '?';
-                    setTimeout(() => { this.src = original + sep + 'r=' + (tries + 1); }, 1000 * (tries + 1));
-                } else {
-                    this.style.visibility = 'hidden';
-                }
-            };
+            attachTileRetry(img, img.src);
         });
 
         // Frame timestamp handles both sources: RainViewer's unix `time` (seconds)
@@ -2479,14 +2480,7 @@ async function loadRadar(lat, lon) {
                 img.src = src;
                 img.removeAttribute('data-src');
                 img.dataset.retries = '0';
-                img.onerror = function () {
-                    const tries = parseInt(this.dataset.retries || '0', 10);
-                    if (tries < 3) {
-                        this.dataset.retries = String(tries + 1);
-                        const sep = src.includes('?') ? '&' : '?';
-                        setTimeout(() => { this.src = src + sep + 'r=' + (tries + 1); }, 1000 * (tries + 1));
-                    } else { this.style.visibility = 'hidden'; }
-                };
+                attachTileRetry(img, src);
             });
         }
 
@@ -2680,34 +2674,18 @@ function renderSunMoon(daily, lat, lon, utcOffsetSeconds) {
 
     const moonSection = document.getElementById('moon-section');
 
-    // If moon is currently up, show Moonset first (next event), then Moonrise (after that)
-    const firstItem = moonTimes.moonIsUp
-        ? `<div class="astro-item">
-                <div style="font-size:1.5rem;">🌘</div>
-                <div class="label">${t('moonset')}</div>
-                <div class="value">${fmtTime(moonTimes.set)}</div>
-                <div class="label">${setDate}</div>
-           </div>`
-        : `<div class="astro-item">
-                <div style="font-size:1.5rem;">🌔</div>
-                <div class="label">${t('moonrise')}</div>
-                <div class="value">${fmtTime(moonTimes.rise)}</div>
-                <div class="label">${riseDate}</div>
+    const astroItem = (icon, labelKey, time, dateLabel) => `<div class="astro-item">
+                <div style="font-size:1.5rem;">${icon}</div>
+                <div class="label">${t(labelKey)}</div>
+                <div class="value">${fmtTime(time)}</div>
+                <div class="label">${dateLabel}</div>
            </div>`;
+    const moonriseItem = astroItem('🌔', 'moonrise', moonTimes.rise, riseDate);
+    const moonsetItem = astroItem('🌘', 'moonset', moonTimes.set, setDate);
 
-    const lastItem = moonTimes.moonIsUp
-        ? `<div class="astro-item">
-                <div style="font-size:1.5rem;">🌔</div>
-                <div class="label">${t('moonrise')}</div>
-                <div class="value">${fmtTime(moonTimes.rise)}</div>
-                <div class="label">${riseDate}</div>
-           </div>`
-        : `<div class="astro-item">
-                <div style="font-size:1.5rem;">🌘</div>
-                <div class="label">${t('moonset')}</div>
-                <div class="value">${fmtTime(moonTimes.set)}</div>
-                <div class="label">${setDate}</div>
-           </div>`;
+    // If moon is currently up, show Moonset first (next event), then Moonrise (after that)
+    const firstItem = moonTimes.moonIsUp ? moonsetItem : moonriseItem;
+    const lastItem = moonTimes.moonIsUp ? moonriseItem : moonsetItem;
 
     moonSection.innerHTML = `
         <h2>${t('moon')}</h2>
@@ -2864,8 +2842,8 @@ async function fetchAllWeatherData(lat, lon, country, region) {
     const myToken = ++weatherLoadToken;
     _lastLat = lat;
     _lastLon = lon;
-    _lastCountry = country || _lastCountry || '';
-    _lastRegion = region || _lastRegion || '';
+    _lastCountry = country || '';
+    _lastRegion = region || '';
     _lastPickedLocation = {
         lat,
         lon,
@@ -3549,27 +3527,17 @@ initChartDrag();
     const curLang = getCurrentLang();
 
     // Button text: "Language: [flag(s)] <lang name>"
-    let btnFlagHtml;
-    if (curLang === 'en') {
-        btnFlagHtml = `<img src="${assetUrl('/img/flags/en.png')}" class="lang-btn-flag" alt="US"><img src="${assetUrl('/img/flags/gb.png')}" class="lang-btn-flag" alt="UK">`;
-    } else if (curLang === 'pt') {
-        btnFlagHtml = `<img src="${assetUrl('/img/flags/pt-br.png')}" class="lang-btn-flag" alt="BR"><img src="${assetUrl('/img/flags/pt-eu.png')}" class="lang-btn-flag" alt="PT">`;
-    } else {
-        btnFlagHtml = `<img src="${assetUrl(LANGUAGE_FLAGS[curLang])}" class="lang-btn-flag" alt="">`;
-    }
+    const flagImg = (f, cls) => `<img src="${assetUrl(f.path)}"${cls ? ` class="${cls}"` : ''} alt="${f.alt}">`;
+    const btnFlagHtml = LANGUAGE_FLAGS[curLang].map(f => flagImg(f, 'lang-btn-flag')).join('');
     langBtn.innerHTML = `${t('language')}: ${btnFlagHtml} ${LANGUAGE_NAMES[curLang] || 'English'}`;
 
     // Radio list with flags
     langList.innerHTML = Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
         const checked = code === curLang ? 'checked' : '';
-        let flagHtml;
-        if (code === 'en') {
-            flagHtml = `<span class="lang-flags"><img src="${assetUrl('/img/flags/en.png')}" alt="US"><img src="${assetUrl('/img/flags/gb.png')}" alt="UK"></span>`;
-        } else if (code === 'pt') {
-            flagHtml = `<span class="lang-flags"><img src="${assetUrl('/img/flags/pt-br.png')}" alt="BR"><img src="${assetUrl('/img/flags/pt-eu.png')}" alt="PT"></span>`;
-        } else {
-            flagHtml = `<img class="lang-flag" src="${assetUrl(LANGUAGE_FLAGS[code])}" alt="">`;
-        }
+        const flags = LANGUAGE_FLAGS[code];
+        const flagHtml = flags.length > 1
+            ? `<span class="lang-flags">${flags.map(f => flagImg(f, '')).join('')}</span>`
+            : flagImg(flags[0], 'lang-flag');
         return `<label class="language-option">
             <input type="radio" name="language" value="${code}" ${checked}>
             ${flagHtml}
@@ -3685,7 +3653,9 @@ if (openWeatherKeyInput) {
         else storageRemove('openWeatherApiKey');
         e.target.value = key;
         if (_lastLat !== null && _lastCountry !== 'United States') {
+            const myToken = weatherLoadToken;
             fetchAlerts(_lastLat, _lastLon, _lastCountry).then(alerts => {
+                if (myToken !== weatherLoadToken) return; // location changed while this was in flight
                 _lastAlerts = alerts;
                 renderAlerts(alerts);
             });

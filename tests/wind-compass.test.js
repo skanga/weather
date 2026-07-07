@@ -31,7 +31,11 @@ const out = new Function(`
     const section = { innerHTML: '' };
     const document = { getElementById: (id) => id === 'wind-section' ? section : null };
     function t(k, vars) {
-        let s = ({ wind: 'Wind', windFrom: 'From {dir}', gusts: 'Gusts' })[k] || k;
+        let s = ({
+            wind: 'Wind', windFrom: 'From {dir}', gusts: 'Gusts',
+            windDirN: 'North', windDirNE: 'Northeast', windDirE: 'East', windDirSE: 'Southeast',
+            windDirS: 'South', windDirSW: 'Southwest', windDirW: 'West', windDirNW: 'Northwest',
+        })[k] || k;
         if (vars) for (const [kk, v] of Object.entries(vars)) s = s.replace('{' + kk + '}', v);
         return s;
     }
@@ -73,6 +77,12 @@ assert.strictEqual(ids[1], 'wind-section', 'wind inserted right after current');
 // Full-form directions only in the wind widget readout; abbreviations stay
 // on the compact Current Conditions line and the compass dial.
 const longDir = new Function(`
+    function t(k) {
+        return ({
+            windDirN: 'North', windDirNE: 'Northeast', windDirE: 'East', windDirSE: 'Southeast',
+            windDirS: 'South', windDirSW: 'Southwest', windDirW: 'West', windDirNW: 'Northwest',
+        })[k] || k;
+    }
     ${functionSource(appSrc, 'windDirectionLong')}
     return windDirectionLong;
 `)();
